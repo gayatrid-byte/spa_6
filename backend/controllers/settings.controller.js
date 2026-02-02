@@ -140,35 +140,11 @@
 
 const User = require('../models/user.model');
 
-// Add a variable to store settings (in production, this would be in a database)
-let salonSettings = {
-  salon: {
-    name: 'My Salon',
-    address: '',
-    phone: '',
-    email: '',
-    workingHours: {
-      monday: { open: '09:00', close: '18:00', closed: false },
-      tuesday: { open: '09:00', close: '18:00', closed: false },
-      wednesday: { open: '09:00', close: '18:00', closed: false },
-      thursday: { open: '09:00', close: '18:00', closed: false },
-      friday: { open: '09:00', close: '18:00', closed: false },
-      Saturday: { open: '09:00', close: '17:00', closed: false },
-      sunday: { open: '09:00', close: '17:00', closed: true }
-    }
-  },
-  billing: {
-    taxRate: 0,
-    currency: 'USD',
-    invoicePrefix: 'INV',
-    nextInvoiceNumber: 1001
-  }
-};
+const settingsStore = require('../utils/settingsStore');
 
 async function getSettings(req, res) {
   try {
-    // Return saved settings
-    res.json(salonSettings);
+    res.json(settingsStore.getSettings());
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -176,23 +152,10 @@ async function getSettings(req, res) {
 
 async function updateSettings(req, res) {
   try {
-    // Update settings
-    if (req.body.salon) {
-      salonSettings.salon = { ...salonSettings.salon, ...req.body.salon };
-    }
-    if (req.body.billing) {
-      salonSettings.billing = { ...salonSettings.billing, ...req.body.billing };
-    }
-    
-    // Validate currency
-    const validCurrencies = ['USD', 'INR', 'EUR', 'GBP'];
-    if (salonSettings.billing.currency && !validCurrencies.includes(salonSettings.billing.currency)) {
-      salonSettings.billing.currency = 'USD';
-    }
-    
+    const updated = settingsStore.updateSettings(req.body || {});
     res.json({
       message: 'Settings updated successfully',
-      settings: salonSettings
+      settings: updated
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

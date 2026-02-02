@@ -747,6 +747,16 @@ const api = {
     delete(id) {
       return api.request(`/billing/${id}`, { method: 'DELETE' });
     }
+    ,
+    /**
+     * Get auto-loaded invoice items and discounts for a customer/day
+     * @param {Object} filters - { customer_id, date }
+     * @returns {Promise<Object>} Suggested items and totals
+     */
+    getAutoItems(filters = {}) {
+      const url = api.buildUrl('/billing/auto-items/by-day', filters);
+      return api.request(url);
+    }
   },
 
   // ============================================

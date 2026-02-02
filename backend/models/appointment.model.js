@@ -43,6 +43,11 @@ class Booking {
         params.push(`%${filters.customer_name}%`);
       }
 
+      if (filters.customer_id) {
+        query += ' AND b.customer_id = ?';
+        params.push(filters.customer_id);
+      }
+
       if (filters.customer_phone) {
         query += ' AND c.phone LIKE ?';
         params.push(`%${filters.customer_phone}%`);

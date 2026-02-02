@@ -28,4 +28,24 @@ async function authenticate(req, res, next) {
   }
 }
 
-module.exports = { authenticate };
+// Simple role-based authorization middleware
+function authorize(allowedRoles = []) {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+        const userRole = req.user.role || req.user.user_role || 'staff';
+        if (!allowedRoles.includes(userRole)) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
+      }
+      next();
+    } catch (e) {
+      return res.status(500).json({ error: 'Authorization failed' });
+    }
+  };
+}
+
+module.exports = { authenticate, authorize };

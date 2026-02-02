@@ -1,4 +1,7 @@
 const Invoice = require('../models/invoice.model');
+const { pool } = require('../config/database');
+const Membership = require('../models/membership.model');
+const { getSettings } = require('../utils/settingsStore');
 
 async function getAllInvoices(req, res) {
   try {
@@ -108,5 +111,87 @@ module.exports = {
   createInvoice,
   updateInvoice,
   updateInvoiceStatus,
-  deleteInvoice
+  deleteInvoice,
+  getAutoInvoiceItems
 };
+
+// Auto-load services for a customer's selected day and compute discounts
+async function getAutoInvoiceItems(req, res) {
+  try {
+    const salonId = req.user.salon_id;
+    const { customer_id, date } = req.query;
+
+    if (!customer_id || !date) {
+      return res.status(400).json({ error: 'customer_id and date are required' });
+    }
+
+    // Fetch booking items for that customer and day
+    const [rows] = await pool.query(
+      `SELECT bi.service_id, s.name as service_name, bi.price
+       FROM booking_items bi
+       JOIN bookings b ON bi.booking_id = b.id
+       JOIN services s ON bi.service_id = s.id
+       WHERE b.salon_id = ? AND b.customer_id = ? AND b.booking_date = ?
+         AND b.status NOT IN ('cancelled')`,
+      [salonId, customer_id, date]
+    );
+
+    const items = rows.map(r => ({
+      service_id: r.service_id,
+      description: r.service_name,
+      quantity: 1,
+      price: parseFloat(r.price) || 0,
+      total: parseFloat(r.price) || 0
+    }));
+
+    const subtotal = items.reduce((sum, i) => sum + (parseFloat(i.total) || 0), 0);
+
+    // Membership discount calculation (free services + percent + wallet) without persisting wallet/free changes
+    let planDiscount = 0;
+    let freeDeduction = 0;
+    let walletApplied = 0;
+
+    try {
+      const membership = await Membership.getUserMembership(customer_id);
+      if (membership && (membership.status === 'active' || membership.status === 'pending')) {
+        const percent = parseFloat(membership.discount_percentage || 0);
+        const pricesSorted = items
+          .map(i => parseFloat(i.price) || 0)
+          .filter(p => p > 0)
+          .sort((a, b) => b - a);
+        const freeRemaining = parseInt(membership.free_services_remaining || 0) || 0;
+        const freeUsed = Math.min(freeRemaining, pricesSorted.length);
+        if (freeUsed > 0) {
+          freeDeduction = pricesSorted.slice(0, freeUsed).reduce((sum, p) => sum + p, 0);
+        }
+        const subtotalAfterFree = Math.max(0, subtotal - freeDeduction);
+        planDiscount = percent > 0 ? (subtotalAfterFree * (percent / 100)) : 0;
+        const walletBalance = parseFloat(membership.wallet_balance || 0);
+        const remainingAfterDiscounts = Math.max(0, subtotalAfterFree - planDiscount);
+        walletApplied = Math.min(walletBalance, remainingAfterDiscounts);
+      }
+    } catch (_) {}
+
+    const settings = getSettings();
+    const taxRate = parseFloat(settings.billing?.taxRate || 0);
+    const autoDiscount = parseFloat((planDiscount + freeDeduction + walletApplied).toFixed(2));
+    const tax = parseFloat(((subtotal - autoDiscount) * (taxRate / 100)).toFixed(2));
+    const total = Math.max(0, parseFloat((subtotal - autoDiscount + tax).toFixed(2)));
+
+    res.json({
+      items,
+      subtotal,
+      auto_discount: autoDiscount,
+      tax,
+      total,
+      breakdown: {
+        freeDeduction,
+        planDiscount,
+        walletApplied,
+        taxRate
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}

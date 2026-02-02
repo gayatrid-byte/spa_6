@@ -128,7 +128,7 @@ async function showInvoiceForm(invoice = null) {
     try {
       const appointments = await api.bookings.getAll({ customer_id: invoice.customer_id });
       if (appointments.length > 0) {
-        customerLastBooking = appointments[0]; // Get most recent
+        customerLastBooking = appointments[0]; // Most recent
       }
     } catch (error) {
       console.error('Error getting last booking:', error);
@@ -139,7 +139,7 @@ async function showInvoiceForm(invoice = null) {
     <form id="invoiceForm">
       <div class="form-group">
         <label for="invoiceCustomer">Customer *</label>
-        <select id="invoiceCustomer" name="customer_id" required onchange="loadCustomerLastBooking(this.value)">
+        <select id="invoiceCustomer" name="customer_id" required onchange="window.billingModule.handleCustomerChange(this.value)">
           <option value="">Select customer</option>
           ${customers.map(c => `<option value="${c.id}" ${invoice?.customer_id === c.id ? 'selected' : ''}>${c.name} - ${c.phone || 'No phone'}</option>`).join('')}
         </select>
@@ -147,9 +147,10 @@ async function showInvoiceForm(invoice = null) {
       
       ${customerLastBooking ? `
         <div class="customer-last-booking card mb-2" style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
-          <small><strong>Last Booking:</strong> ${utils.formatDate(customerLastBooking.appointment_date)} at ${utils.formatTime(customerLastBooking.appointment_time)}</small>
+          <small><strong>Last Booking:</strong> ${utils.formatDate(customerLastBooking.booking_date)}
+          ${customerLastBooking.start_time ? ` at ${utils.formatTime(customerLastBooking.start_time)}` : ''}</small>
           <br>
-          <small><strong>Service:</strong> ${customerLastBooking.service_name || 'N/A'}</small>
+          <small><strong>Services:</strong> ${customerLastBooking.total_services || 0}</small>
         </div>
       ` : ''}
       
@@ -158,6 +159,7 @@ async function showInvoiceForm(invoice = null) {
       <div class="form-group">
         <label for="invoiceDate">Date *</label>
         <input type="date" id="invoiceDate" name="invoice_date" value="${invoice?.invoice_date || utils.getTodayDate()}" required>
+        <small id="autoItemsHint" class="text-muted">Selecting customer and date will auto-load services & discounts for that day.</small>
       </div>
       
       <div class="form-group">
@@ -173,6 +175,9 @@ async function showInvoiceForm(invoice = null) {
           `).join('')}
         </div>
         <button type="button" id="addItemBtn" class="btn btn-sm btn-outline mt-1">+ Add Item</button>
+        <div id="autoDiscountInfo" class="mt-2" style="display:none;">
+          <small class="text-info">Auto-applied: <span id="autoDiscountBreakdown"></span></small>
+        </div>
       </div>
       
       <div class="d-flex gap-2 mt-2">
@@ -199,6 +204,14 @@ async function showInvoiceForm(invoice = null) {
   `;
   
   window.appUtils.showModal(isEdit ? 'Edit Invoice' : 'Create Invoice', formHTML);
+    // Trigger auto-load when date changes
+    document.getElementById('invoiceDate').addEventListener('change', async function() {
+      const customerId = parseInt(document.getElementById('invoiceCustomer').value);
+      const date = this.value;
+      if (customerId && date) {
+        await window.billingModule.loadAutoItems(customerId, date);
+      }
+    });
   
   // Add item button
   document.getElementById('addItemBtn').addEventListener('click', function() {
@@ -226,9 +239,9 @@ async function showInvoiceForm(invoice = null) {
         const lastBooking = appointments[0]; // Most recent
         lastBookingInfo.innerHTML = `
           <div class="customer-last-booking card mb-2" style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
-            <small><strong>Last Booking:</strong> ${utils.formatDate(lastBooking.appointment_date)} at ${utils.formatTime(lastBooking.appointment_time)}</small>
+            <small><strong>Last Booking:</strong> ${utils.formatDate(lastBooking.booking_date)}${lastBooking.start_time ? ` at ${utils.formatTime(lastBooking.start_time)}` : ''}</small>
             <br>
-            <small><strong>Service:</strong> ${lastBooking.service_name || 'N/A'}</small>
+            <small><strong>Total Services:</strong> ${lastBooking.total_services || 0}</small>
             <br>
             <small><strong>Status:</strong> <span class="badge badge-${getAppointmentStatusClass(lastBooking.status)}">${lastBooking.status}</span></small>
           </div>
@@ -242,6 +255,15 @@ async function showInvoiceForm(invoice = null) {
       }
     } catch (error) {
       console.error('Error loading customer last booking:', error);
+    }
+  };
+
+  // Handle customer change: load last booking and auto-items if date selected
+  window.billingModule.handleCustomerChange = async function(customerId) {
+    await window.loadCustomerLastBooking(customerId);
+    const date = document.getElementById('invoiceDate').value;
+    if (customerId && date) {
+      await window.billingModule.loadAutoItems(customerId, date);
     }
   };
   
@@ -323,6 +345,36 @@ function getAppointmentStatusClass(status) {
 
 // Export functions for global access
 window.billingModule = {
+  async loadAutoItems(customerId, date) {
+    try {
+      const data = await api.billing.getAutoItems({ customer_id: customerId, date });
+      const itemsContainer = document.getElementById('invoiceItems');
+      // Replace items with auto-loaded ones (keep manual ability to add afterwards)
+      itemsContainer.innerHTML = data.items.map(item => `
+        <div class="invoice-item d-flex gap-2 mb-2">
+          <input type="text" placeholder="Description" value="${item.description}" class="item-desc" style="flex: 2">
+          <input type="number" placeholder="Qty" value="${item.quantity}" class="item-qty" style="flex: 1" min="1">
+          <input type="number" placeholder="Price" value="${item.price}" class="item-price" style="flex: 1" step="0.01" min="0">
+          <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">×</button>
+        </div>
+      `).join('');
+
+      // Set discount and show breakdown info
+      const discountInput = document.getElementById('invoiceDiscount');
+      discountInput.value = (data.auto_discount || 0);
+      const autoInfo = document.getElementById('autoDiscountInfo');
+      const breakdownEl = document.getElementById('autoDiscountBreakdown');
+      const b = data.breakdown || {};
+      breakdownEl.textContent = `Free: ${utils.formatCurrency(b.freeDeduction || 0, salonSettings.billing?.currency || 'USD')}, `+
+        `Plan %: ${utils.formatCurrency(b.planDiscount || 0, salonSettings.billing?.currency || 'USD')}, `+
+        `Wallet: ${utils.formatCurrency(b.walletApplied || 0, salonSettings.billing?.currency || 'USD')}, `+
+        `Tax ${b.taxRate || 0}%`;
+      autoInfo.style.display = 'block';
+    } catch (error) {
+      console.error('Auto-items load error:', error);
+      utils.showToast(error.message || 'Failed to load items', 'error');
+    }
+  },
   viewInvoice: async function(id) {
     try {
       const invoice = await api.billing.getById(id);

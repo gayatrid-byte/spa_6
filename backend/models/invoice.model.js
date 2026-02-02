@@ -1,4 +1,5 @@
 const { pool } = require('../config/database');
+const { generateInvoiceNumber } = require('../utils/settingsStore');
 
 class Invoice {
   static async getAll(salonId, filters = {}) {
@@ -62,9 +63,12 @@ class Invoice {
     try {
       await connection.beginTransaction();
 
+      // Generate invoice number
+      const invoiceNumber = generateInvoiceNumber();
+
       const [result] = await connection.query(
-        'INSERT INTO invoices (salon_id, customer_id, invoice_date, subtotal, tax, discount, total, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [invoiceData.salon_id, invoiceData.customer_id, invoiceData.invoice_date, invoiceData.subtotal, invoiceData.tax || 0, invoiceData.discount || 0, invoiceData.total, invoiceData.status || 'pending', invoiceData.notes]
+        'INSERT INTO invoices (salon_id, invoice_number, customer_id, invoice_date, subtotal, tax, discount, total, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [invoiceData.salon_id, invoiceNumber, invoiceData.customer_id, invoiceData.invoice_date, invoiceData.subtotal, invoiceData.tax || 0, invoiceData.discount || 0, invoiceData.total, invoiceData.status || 'pending', invoiceData.notes]
       );
 
       const invoiceId = result.insertId;
