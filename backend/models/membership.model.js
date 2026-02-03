@@ -13,21 +13,18 @@ class MembershipModel {
   static async createPlan(salonId, plan) {
     const [result] = await pool.query(
       `INSERT INTO membership_plans 
-       (salon_id, name, description, tier, duration_days, price, is_recurring, 
-        discount_percentage, wallet_credits, free_services, guest_passes, priority_level, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (salon_id, name, description, tier, duration_months, price,
+        discount_percentage, wallet_credits, priority_level, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         salonId,
         plan.name,
         plan.description || null,
         plan.tier || 'silver',
-        plan.duration_days,
+        plan.duration_months,
         plan.price || 0,
-        !!plan.is_recurring,
-        plan.discount_percentage || 0,
-        plan.wallet_credits || 0,
-        plan.free_services || 0,
-        plan.guest_passes || 0,
+        (plan.discount_percentage === undefined || plan.discount_percentage === null || plan.discount_percentage === '') ? 15 : plan.discount_percentage,
+        (plan.wallet_credits === undefined || plan.wallet_credits === null || plan.wallet_credits === '') ? (plan.price || 0) : plan.wallet_credits,
         plan.priority_level || 'standard',
         plan.is_active !== false
       ]
@@ -38,21 +35,18 @@ class MembershipModel {
   static async updatePlan(id, plan) {
     const [result] = await pool.query(
       `UPDATE membership_plans SET 
-       name = ?, description = ?, tier = ?, duration_days = ?, price = ?, is_recurring = ?,
-       discount_percentage = ?, wallet_credits = ?, free_services = ?, guest_passes = ?,
+       name = ?, description = ?, tier = ?, duration_months = ?, price = ?,
+       discount_percentage = ?, wallet_credits = ?,
        priority_level = ?, is_active = ?
        WHERE id = ?`,
       [
         plan.name,
         plan.description || null,
         plan.tier || 'silver',
-        plan.duration_days,
+        plan.duration_months,
         plan.price || 0,
-        !!plan.is_recurring,
-        plan.discount_percentage || 0,
-        plan.wallet_credits || 0,
-        plan.free_services || 0,
-        plan.guest_passes || 0,
+        (plan.discount_percentage === undefined || plan.discount_percentage === null || plan.discount_percentage === '') ? 15 : plan.discount_percentage,
+        (plan.wallet_credits === undefined || plan.wallet_credits === null || plan.wallet_credits === '') ? (plan.price || 0) : plan.wallet_credits,
         plan.priority_level || 'standard',
         plan.is_active !== false,
         id
@@ -69,8 +63,8 @@ class MembershipModel {
   // Memberships
   static async getUserMembership(userId) {
     const [rows] = await pool.query(
-      `SELECT m.*, p.name as plan_name, p.tier, p.discount_percentage, p.wallet_credits, p.free_services,
-              p.guest_passes, p.priority_level
+      `SELECT m.*, p.name as plan_name, p.tier, p.discount_percentage, p.wallet_credits,
+              p.priority_level
        FROM memberships m
        JOIN membership_plans p ON m.plan_id = p.id
        WHERE m.customer_id = ? AND m.status IN ('active','pending')
@@ -87,22 +81,21 @@ class MembershipModel {
     if (!plan) throw new Error('Plan not found');
 
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + plan.duration_days);
+    const months = Number(plan.duration_months || 0);
+    endDate.setMonth(endDate.getMonth() + months);
     const endDateStr = endDate.toISOString().slice(0, 10);
 
     const [result] = await pool.query(
       `INSERT INTO memberships 
        (customer_id, salon_id, plan_id, start_date, end_date, status, wallet_balance, free_services_remaining, guest_passes_remaining)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'active', ?, 0, 0)`,
       [
         customerId,
         salonId,
         planId,
         startDate,
         endDateStr,
-        plan.wallet_credits || 0,
-        plan.free_services || 0,
-        plan.guest_passes || 0
+        plan.wallet_credits || 0
       ]
     );
     return result.insertId;

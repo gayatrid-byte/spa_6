@@ -38,8 +38,6 @@ export async function render(container) {
               <div>
                 <p><strong>Discount:</strong> ${Number(myMembership.discount_percentage)}%</p>
                 <p><strong>Wallet:</strong> ${Number(myMembership.wallet_balance).toFixed(2)}</p>
-                <p><strong>Free Services:</strong> ${myMembership.free_services_remaining}</p>
-                <p><strong>Guest Passes:</strong> ${myMembership.guest_passes_remaining}</p>
               </div>
             </div>
           </div>
@@ -59,14 +57,12 @@ export async function render(container) {
         <div class="card-body">
           <div class="grid grid-2">
             <div>
-              <p><strong>Duration:</strong> ${p.duration_days} days</p>
-              <p><strong>Price:</strong> $${Number(p.price).toFixed(2)} ${p.is_recurring ? '(recurring)' : ''}</p>
+              <p><strong>Duration:</strong> ${p.duration_months} months</p>
+              <p><strong>Price:</strong> $${Number(p.price).toFixed(2)}</p>
               <p><strong>Discount:</strong> ${Number(p.discount_percentage)}%</p>
               <p><strong>Wallet Credits:</strong> $${Number(p.wallet_credits).toFixed(2)}</p>
             </div>
             <div>
-              <p><strong>Free Services:</strong> ${p.free_services}</p>
-              <p><strong>Guest Passes:</strong> ${p.guest_passes}</p>
               <p><strong>Priority:</strong> ${p.priority_level}</p>
               <p><strong>Status:</strong> ${p.is_active ? 'Active' : 'Inactive'}</p>
             </div>
@@ -86,13 +82,16 @@ export async function render(container) {
           <form id="createPlanForm" class="grid grid-3">
             <div><label>Name</label><input name="name" required /></div>
             <div><label>Tier</label><select name="tier"><option>silver</option><option>gold</option><option>platinum</option><option>diamond</option></select></div>
-            <div><label>Duration (days)</label><input name="duration_days" type="number" min="1" required /></div>
+            <div>
+              <label>Duration (months)</label>
+              <select name="duration_months" required>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+              </select>
+            </div>
             <div><label>Price</label><input name="price" type="number" step="0.01" required /></div>
-            <div><label>Recurring</label><select name="is_recurring"><option value="false">No</option><option value="true">Yes</option></select></div>
             <div><label>Discount %</label><input name="discount_percentage" type="number" step="0.01" /></div>
-            <div><label>Wallet Credits</label><input name="wallet_credits" type="number" step="0.01" /></div>
-            <div><label>Free Services</label><input name="free_services" type="number" /></div>
-            <div><label>Guest Passes</label><input name="guest_passes" type="number" /></div>
             <div><label>Priority</label><select name="priority_level"><option>standard</option><option>priority</option><option>vip</option></select></div>
             <div class="grid-col-span-3"><label>Description</label><textarea name="description"></textarea></div>
             <div class="grid-col-span-3"><button class="btn btn-primary" type="submit">Create Plan</button></div>
@@ -203,18 +202,17 @@ export async function render(container) {
                     <option>diamond</option>
                   </select>
                 </div>
-                <div><label>Duration (days)</label><input id="editPlanDuration" type="number" min="1" required /></div>
-                <div><label>Price</label><input id="editPlanPrice" type="number" step="0.01" required /></div>
-                <div><label>Recurring</label>
-                  <select id="editPlanRecurring">
-                    <option value="false">No</option>
-                    <option value="true">Yes</option>
+                <div>
+                  <label>Duration (months)</label>
+                  <select id="editPlanDuration" required>
+                    <option value="3">3 months</option>
+                    <option value="6">6 months</option>
+                    <option value="12">12 months</option>
                   </select>
                 </div>
+                <div><label>Price</label><input id="editPlanPrice" type="number" step="0.01" required /></div>
                 <div><label>Discount %</label><input id="editPlanDiscount" type="number" step="0.01" /></div>
                 <div><label>Wallet Credits</label><input id="editPlanWallet" type="number" step="0.01" /></div>
-                <div><label>Free Services</label><input id="editPlanFree" type="number" /></div>
-                <div><label>Guest Passes</label><input id="editPlanGuest" type="number" /></div>
                 <div><label>Priority</label>
                   <select id="editPlanPriority">
                     <option>standard</option>
@@ -376,14 +374,18 @@ export async function render(container) {
               container.querySelector('#editPlanName').value = plan.name || '';
               const tierSel = container.querySelector('#editPlanTier');
               if (tierSel) tierSel.value = plan.tier || 'silver';
-              container.querySelector('#editPlanDuration').value = Number(plan.duration_days) || 1;
+              container.querySelector('#editPlanDuration').value = Number(plan.duration_months) || 1;
               container.querySelector('#editPlanPrice').value = Number(plan.price) || 0;
-              const recSel = container.querySelector('#editPlanRecurring');
-              if (recSel) recSel.value = plan.is_recurring ? 'true' : 'false';
-              container.querySelector('#editPlanDiscount').value = Number(plan.discount_percentage) || 0;
-              container.querySelector('#editPlanWallet').value = Number(plan.wallet_credits) || 0;
-              container.querySelector('#editPlanFree').value = Number(plan.free_services) || 0;
-              container.querySelector('#editPlanGuest').value = Number(plan.guest_passes) || 0;
+              container.querySelector('#editPlanDiscount').value = (plan.discount_percentage ?? 15);
+              container.querySelector('#editPlanWallet').value = Number(plan.wallet_credits ?? plan.price) || 0;
+              // Auto-fill wallet credits from price on change
+              const priceInput = container.querySelector('#editPlanPrice');
+              const walletInput = container.querySelector('#editPlanWallet');
+              if (priceInput && walletInput) {
+                priceInput.addEventListener('input', () => {
+                  walletInput.value = priceInput.value || '0';
+                });
+              }
               const prioSel = container.querySelector('#editPlanPriority');
               if (prioSel) prioSel.value = plan.priority_level || 'standard';
               container.querySelector('#editPlanDescription').value = plan.description || '';
@@ -478,13 +480,10 @@ export async function render(container) {
           const payload = {
             name: container.querySelector('#editPlanName').value,
             tier: container.querySelector('#editPlanTier').value,
-            duration_days: Number(container.querySelector('#editPlanDuration').value),
+            duration_months: Number(container.querySelector('#editPlanDuration').value),
             price: Number(container.querySelector('#editPlanPrice').value),
-            is_recurring: container.querySelector('#editPlanRecurring').value === 'true',
             discount_percentage: Number(container.querySelector('#editPlanDiscount').value || 0),
             wallet_credits: Number(container.querySelector('#editPlanWallet').value || 0),
-            free_services: Number(container.querySelector('#editPlanFree').value || 0),
-            guest_passes: Number(container.querySelector('#editPlanGuest').value || 0),
             priority_level: container.querySelector('#editPlanPriority').value,
             description: container.querySelector('#editPlanDescription').value || '',
             is_active: container.querySelector('#editPlanActive').value === 'true'

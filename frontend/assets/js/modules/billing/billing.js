@@ -1,20 +1,22 @@
 let invoices = [];
 let customers = [];
 let salonSettings = {};
+let serviceBookings = [];
+let serviceAmount = 0;
+let servicesActualSubtotal = 0;
 
 export async function render(container) {
   try {
-    // Load necessary data
     const [invoicesData, customersData, settingsData] = await Promise.all([
       api.billing.getAll(),
       api.customers.getAll(),
       api.settings.get()
     ]);
-    
+
     invoices = invoicesData;
     customers = customersData;
     salonSettings = settingsData;
-    
+
     container.innerHTML = `
       <div class="table-container">
         <div class="table-header">
@@ -35,11 +37,10 @@ export async function render(container) {
         </div>
       </div>
     `;
-    
-    // Attach event listeners
+
     attachEventListeners(container);
   } catch (error) {
-    console.error('Error loading billing:', error);
+    console.error("Error loading billing:", error);
     container.innerHTML = `
       <div class="card">
         <h3>Error</h3>
@@ -49,13 +50,13 @@ export async function render(container) {
   }
 }
 
-function renderInvoicesTable(invoicesList) {
-  if (invoicesList.length === 0) {
+function renderInvoicesTable(invoiceList) {
+  if (invoiceList.length === 0) {
     return '<p class="text-center">No invoices found</p>';
   }
-  
-  const currency = salonSettings.billing?.currency || 'USD';
-  
+
+  const currency = salonSettings.billing?.currency || "USD";
+
   return `
     <table>
       <thead>
@@ -72,10 +73,12 @@ function renderInvoicesTable(invoicesList) {
         </tr>
       </thead>
       <tbody>
-        ${invoicesList.map(inv => `
+        ${invoiceList
+          .map(
+            (inv) => `
           <tr>
             <td>${inv.invoice_number}</td>
-            <td>${inv.customer_name || 'N/A'}</td>
+            <td>${inv.customer_name || "N/A"}</td>
             <td>${utils.formatDate(inv.invoice_date)}</td>
             <td>${utils.formatCurrency(inv.subtotal, currency)}</td>
             <td>${utils.formatCurrency(inv.tax, currency)}</td>
@@ -93,293 +96,370 @@ function renderInvoicesTable(invoicesList) {
               </select>
             </td>
           </tr>
-        `).join('')}
+        `
+          )
+          .join("")}
       </tbody>
     </table>
   `;
 }
 
 function attachEventListeners(container) {
-  // Filter by status
-  const filterSelect = container.querySelector('#filterStatus');
-  filterSelect.addEventListener('change', async function() {
+  const filterSelect = container.querySelector("#filterStatus");
+  filterSelect.addEventListener("change", async function () {
     const status = this.value;
-    try {
-      const filtered = status ? await api.billing.getAll({ status }) : await api.billing.getAll();
-      container.querySelector('#invoicesTable').innerHTML = renderInvoicesTable(filtered);
-    } catch (error) {
-      console.error('Filter error:', error);
-    }
+    const filtered = status
+      ? await api.billing.getAll({ status })
+      : await api.billing.getAll();
+    container.querySelector("#invoicesTable").innerHTML =
+      renderInvoicesTable(filtered);
   });
-  
-  // Add invoice
-  const addBtn = container.querySelector('#addInvoiceBtn');
-  addBtn.addEventListener('click', () => showInvoiceForm());
+
+  const addBtn = container.querySelector("#addInvoiceBtn");
+  addBtn.addEventListener("click", () => showInvoiceForm());
 }
 
 async function showInvoiceForm(invoice = null) {
   const isEdit = !!invoice;
-  
-  let invoiceItems = invoice?.items || [];
-  let customerLastBooking = null;
-  
-  // If editing or customer is selected, get last booking
-  if (invoice?.customer_id) {
-    try {
-      const appointments = await api.bookings.getAll({ customer_id: invoice.customer_id });
-      if (appointments.length > 0) {
-        customerLastBooking = appointments[0]; // Most recent
-      }
-    } catch (error) {
-      console.error('Error getting last booking:', error);
-    }
-  }
-  
+  let extraItems = invoice?.extra_items || [];
+
   const formHTML = `
     <form id="invoiceForm">
       <div class="form-group">
         <label for="invoiceCustomer">Customer *</label>
-        <select id="invoiceCustomer" name="customer_id" required onchange="window.billingModule.handleCustomerChange(this.value)">
+        <select id="invoiceCustomer" name="customer_id" required>
           <option value="">Select customer</option>
-          ${customers.map(c => `<option value="${c.id}" ${invoice?.customer_id === c.id ? 'selected' : ''}>${c.name} - ${c.phone || 'No phone'}</option>`).join('')}
+          ${customers
+            .map(
+              (c) =>
+                `<option value="${c.id}" ${
+                  invoice?.customer_id === c.id ? "selected" : ""
+                }>${c.name} - ${c.phone || "No phone"}</option>`
+            )
+            .join("")}
         </select>
       </div>
       
-      ${customerLastBooking ? `
-        <div class="customer-last-booking card mb-2" style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
-          <small><strong>Last Booking:</strong> ${utils.formatDate(customerLastBooking.booking_date)}
-          ${customerLastBooking.start_time ? ` at ${utils.formatTime(customerLastBooking.start_time)}` : ''}</small>
-          <br>
-          <small><strong>Services:</strong> ${customerLastBooking.total_services || 0}</small>
-        </div>
-      ` : ''}
-      
-      <div id="customerLastBookingInfo"></div>
-      
       <div class="form-group">
-        <label for="invoiceDate">Date *</label>
-        <input type="date" id="invoiceDate" name="invoice_date" value="${invoice?.invoice_date || utils.getTodayDate()}" required>
-        <small id="autoItemsHint" class="text-muted">Selecting customer and date will auto-load services & discounts for that day.</small>
+        <label for="invoiceDate">Invoice Date *</label>
+        <input type="date" id="invoiceDate" name="invoice_date" value="${
+          invoice?.invoice_date || utils.getTodayDate()
+        }" required>
       </div>
-      
+
+      <div id="serviceDetails" class="card mb-3" style="background: #f8f9fa; padding: 15px; display:none;">
+        <h5>Service Details</h5>
+        <div id="serviceInfo"></div>
+      </div>
+
       <div class="form-group">
-        <label>Invoice Items</label>
-        <div id="invoiceItems">
-          ${invoiceItems.map((item, index) => `
-            <div class="invoice-item d-flex gap-2 mb-2">
-              <input type="text" placeholder="Description" value="${item.description}" class="item-desc" style="flex: 2">
-              <input type="number" placeholder="Qty" value="${item.quantity}" class="item-qty" style="flex: 1" min="1">
-              <input type="number" placeholder="Price" value="${item.price}" class="item-price" style="flex: 1" step="0.01" min="0">
-              <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">×</button>
+        <label>Extra Items (Oil, Products, etc.)</label>
+        <div id="extraItems">
+          ${extraItems
+            .map(
+              (item) => `
+            <div class="extra-item d-flex gap-2 mb-2">
+              <input type="text" placeholder="Item name" value="${
+                item.name
+              }" class="item-name" style="flex: 2">
+              <input type="number" placeholder="Qty" value="${
+                item.quantity
+              }" class="item-qty" style="flex: 1" min="1">
+              <input type="number" placeholder="Price" value="${
+                item.price
+              }" class="item-price" style="flex: 1" step="0.01" min="0">
+              <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove(); window.updateInvoiceCalculations();">×</button>
             </div>
-          `).join('')}
+          `
+            )
+            .join("")}
         </div>
-        <button type="button" id="addItemBtn" class="btn btn-sm btn-outline mt-1">+ Add Item</button>
-        <div id="autoDiscountInfo" class="mt-2" style="display:none;">
-          <small class="text-info">Auto-applied: <span id="autoDiscountBreakdown"></span></small>
+        <button type="button" id="addExtraItemBtn" class="btn btn-sm btn-outline mt-1">+ Add Extra Item</button>
+      </div>
+
+      <div id="calculationSummary" class="card mt-3" style="background:#f0f7ff; padding:15px; border-radius:6px;">
+        <h5>Invoice Summary</h5>
+        <div id="summaryDetails">
+          <p>Select customer and date to fetch bookings</p>
         </div>
       </div>
-      
-      <div class="d-flex gap-2 mt-2">
-        <div class="form-group" style="flex: 1">
-          <label for="invoiceTax">Tax (%)</label>
-          <input type="number" id="invoiceTax" name="tax" value="${invoice?.tax || salonSettings.billing?.taxRate || 0}" step="0.1" min="0">
-        </div>
-        <div class="form-group" style="flex: 1">
-          <label for="invoiceDiscount">Discount</label>
-          <input type="number" id="invoiceDiscount" name="discount" value="${invoice?.discount || 0}" step="0.01" min="0">
-        </div>
-      </div>
-      
+
       <div class="form-group">
         <label for="invoiceNotes">Notes</label>
-        <textarea id="invoiceNotes" name="notes" rows="2">${invoice?.notes || ''}</textarea>
+        <textarea id="invoiceNotes" name="notes" rows="2">${
+          invoice?.notes || ""
+        }</textarea>
       </div>
-      
+
       <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary">${isEdit ? 'Update' : 'Create'} Invoice</button>
-        ${isEdit ? `<button type="button" class="btn btn-success" onclick="window.billingModule.printInvoice(${invoice.id})">Print Invoice</button>` : ''}
+        <button type="submit" class="btn btn-primary">${
+          isEdit ? "Update" : "Create"
+        } Invoice</button>
+        ${
+          isEdit
+            ? `<button type="button" class="btn btn-success" onclick="window.billingModule.printInvoice(${invoice.id})">Print Invoice</button>`
+            : ""
+        }
       </div>
     </form>
   `;
-  
-  window.appUtils.showModal(isEdit ? 'Edit Invoice' : 'Create Invoice', formHTML);
-    // Trigger auto-load when date changes
-    document.getElementById('invoiceDate').addEventListener('change', async function() {
-      const customerId = parseInt(document.getElementById('invoiceCustomer').value);
+
+  window.appUtils.showModal(isEdit ? "Edit Invoice" : "Create Invoice", formHTML);
+
+  document
+    .getElementById("invoiceDate")
+    .addEventListener("change", async function () {
+      const customerId = parseInt(
+        document.getElementById("invoiceCustomer").value
+      );
       const date = this.value;
       if (customerId && date) {
-        await window.billingModule.loadAutoItems(customerId, date);
+        await window.billingModule.loadServiceData(customerId, date);
       }
     });
-  
-  // Add item button
-  document.getElementById('addItemBtn').addEventListener('click', function() {
-    const itemsContainer = document.getElementById('invoiceItems');
-    const newItem = document.createElement('div');
-    newItem.className = 'invoice-item d-flex gap-2 mb-2';
-    newItem.innerHTML = `
-      <input type="text" placeholder="Description" class="item-desc" style="flex: 2">
-      <input type="number" placeholder="Qty" class="item-qty" style="flex: 1" min="1" value="1">
-      <input type="number" placeholder="Price" class="item-price" style="flex: 1" step="0.01" min="0">
-      <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">×</button>
-    `;
-    itemsContainer.appendChild(newItem);
-  });
-  
-  // Load customer last booking function
-  window.loadCustomerLastBooking = async function(customerId) {
-    if (!customerId) return;
-    
-    try {
-      const appointments = await api.bookings.getAll({ customer_id: customerId });
-      const lastBookingInfo = document.getElementById('customerLastBookingInfo');
-      
-      if (appointments.length > 0) {
-        const lastBooking = appointments[0]; // Most recent
-        lastBookingInfo.innerHTML = `
-          <div class="customer-last-booking card mb-2" style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
-            <small><strong>Last Booking:</strong> ${utils.formatDate(lastBooking.booking_date)}${lastBooking.start_time ? ` at ${utils.formatTime(lastBooking.start_time)}` : ''}</small>
-            <br>
-            <small><strong>Total Services:</strong> ${lastBooking.total_services || 0}</small>
-            <br>
-            <small><strong>Status:</strong> <span class="badge badge-${getAppointmentStatusClass(lastBooking.status)}">${lastBooking.status}</span></small>
-          </div>
-        `;
-      } else {
-        lastBookingInfo.innerHTML = `
-          <div class="customer-last-booking card mb-2" style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
-            <small><strong>No previous bookings found for this customer.</strong></small>
-          </div>
-        `;
+
+  document
+    .getElementById("invoiceCustomer")
+    .addEventListener("change", async function () {
+      const customerId = parseInt(this.value);
+      const date = document.getElementById("invoiceDate").value;
+      if (customerId && date) {
+        await window.billingModule.loadServiceData(customerId, date);
       }
+    });
+
+  document
+    .getElementById("addExtraItemBtn")
+    .addEventListener("click", function () {
+      const itemsContainer = document.getElementById("extraItems");
+      const newItem = document.createElement("div");
+      newItem.className = "extra-item d-flex gap-2 mb-2";
+      newItem.innerHTML = `
+        <input type="text" placeholder="Item name" class="item-name" style="flex: 2">
+        <input type="number" placeholder="Qty" class="item-qty" style="flex: 1" min="1" value="1">
+        <input type="number" placeholder="Price" class="item-price" style="flex: 1" step="0.01" min="0">
+        <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove(); window.updateInvoiceCalculations();">×</button>
+      `;
+      itemsContainer.appendChild(newItem);
+    });
+
+  document.getElementById("extraItems").addEventListener("input", (e) => {
+    if (
+      e.target.classList.contains("item-qty") ||
+      e.target.classList.contains("item-price")
+    ) {
+      window.updateInvoiceCalculations();
+    }
+  });
+
+  window.billingModule.loadServiceData = async function (customerId, date) {
+    try {
+      const bookings = await api.bookings.getAll({
+        customer_id: customerId,
+        dateFrom: date,
+        dateTo: date,
+      });
+
+      const currency = salonSettings.billing?.currency || "USD";
+      serviceBookings = bookings || [];
+
+      if (bookings.length === 0) {
+        document.getElementById("serviceDetails").style.display = "none";
+        serviceAmount = 0;
+        servicesActualSubtotal = 0;
+        utils.showToast("No bookings found for that day", "info");
+      } else {
+        serviceAmount = bookings.reduce(
+          (sum, b) => sum + (parseFloat(b.total_amount) || 0),
+          0
+        );
+
+        document.getElementById("serviceInfo").innerHTML = `
+          <ul>
+            ${bookings
+              .map(
+                (b) =>
+                  `<li>${utils.formatTime(b.start_time)} - ${
+                    b.services || "Services"
+                  }: ${utils.formatCurrency(b.total_amount, currency)}</li>`
+              )
+              .join("")}
+          </ul>
+          <p><strong>Total Service Amount:</strong> ${utils.formatCurrency(
+            serviceAmount,
+            currency
+          )}</p>
+        `;
+        document.getElementById("serviceDetails").style.display = "block";
+      }
+
+      // Also fetch actual-priced service items for the same day to compute true subtotal
+      try {
+        const autoData = await api.billing.getAutoItems({ customer_id: customerId, date });
+        servicesActualSubtotal = (autoData.items || []).reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
+      } catch (_) {
+        servicesActualSubtotal = 0;
+      }
+
+      window.updateInvoiceCalculations();
     } catch (error) {
-      console.error('Error loading customer last booking:', error);
+      console.error("Error loading services:", error);
+      utils.showToast("Failed to load booking services", "error");
     }
   };
 
-  // Handle customer change: load last booking and auto-items if date selected
-  window.billingModule.handleCustomerChange = async function(customerId) {
-    await window.loadCustomerLastBooking(customerId);
-    const date = document.getElementById('invoiceDate').value;
-    if (customerId && date) {
-      await window.billingModule.loadAutoItems(customerId, date);
-    }
+  window.updateInvoiceCalculations = function () {
+    const currency = salonSettings.billing?.currency || "USD";
+    let extraItemsTotal = 0;
+    document
+      .querySelectorAll("#extraItems .extra-item")
+      .forEach((item) => {
+        const qty = parseFloat(item.querySelector(".item-qty")?.value) || 0;
+        const price = parseFloat(item.querySelector(".item-price")?.value) || 0;
+        extraItemsTotal += qty * price;
+      });
+
+    const membershipDiscount = Math.max(0, parseFloat((servicesActualSubtotal - serviceAmount).toFixed(2)));
+    const subtotal = parseFloat((servicesActualSubtotal + extraItemsTotal).toFixed(2));
+    const taxRate = parseFloat(salonSettings.billing?.taxRate || 0) || 0;
+    const taxAmount = parseFloat((Math.max(0, subtotal - membershipDiscount) * (taxRate / 100)).toFixed(2));
+    const grandTotal = Math.max(0, parseFloat((subtotal - membershipDiscount + taxAmount).toFixed(2)));
+
+    document.getElementById("summaryDetails").innerHTML = `
+      <p><strong>Services (actual subtotal):</strong> ${utils.formatCurrency(servicesActualSubtotal, currency)}</p>
+      <p><small>After membership: ${utils.formatCurrency(serviceAmount, currency)}</small></p>
+      <p><strong>Extra Items:</strong> ${utils.formatCurrency(
+        extraItemsTotal,
+        currency
+      )}</p>
+      <hr>
+      <div>
+        <small><strong>Subtotal:</strong> ${utils.formatCurrency(subtotal, currency)}</small><br>
+        <small><strong>Discount (membership):</strong> ${utils.formatCurrency(membershipDiscount, currency)}</small><br>
+        <small><strong>Tax (${taxRate}%):</strong> ${utils.formatCurrency(taxAmount, currency)}</small>
+      </div>
+      <h5 style="margin-top:8px;">Grand Total: ${utils.formatCurrency(grandTotal, currency)}</h5>
+    `;
   };
-  
-  // Attach form submit handler
-  document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    // Collect items
-    const items = [];
-    document.querySelectorAll('.invoice-item').forEach(item => {
-      const desc = item.querySelector('.item-desc').value;
-      const qty = parseFloat(item.querySelector('.item-qty').value) || 0;
-      const price = parseFloat(item.querySelector('.item-price').value) || 0;
-      
-      if (desc && qty > 0) {
-        items.push({
-          description: desc,
-          quantity: qty,
-          price: price,
-          total: qty * price
-        });
+
+  document
+    .getElementById("invoiceForm")
+    .addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const currency = salonSettings.billing?.currency || "USD";
+
+      const extraItems = [];
+      document.querySelectorAll(".extra-item").forEach((item) => {
+        const name = item.querySelector(".item-name").value;
+        const qty = parseFloat(item.querySelector(".item-qty").value) || 0;
+        const price = parseFloat(item.querySelector(".item-price").value) || 0;
+        if (name && qty > 0) {
+          extraItems.push({
+            name,
+            quantity: qty,
+            price,
+            total: qty * price,
+          });
+        }
+      });
+      // Fetch auto items (actual service prices) for the selected customer and date
+      const customerId = parseInt(document.getElementById("invoiceCustomer").value);
+      const invoiceDate = document.getElementById("invoiceDate").value;
+      let autoData = { items: [], auto_discount: 0, tax: 0, breakdown: { taxRate: parseFloat(salonSettings.billing?.taxRate || 0) } };
+      try {
+        if (customerId && invoiceDate) {
+          autoData = await api.billing.getAutoItems({ customer_id: customerId, date: invoiceDate });
+        }
+      } catch (err) {
+        console.warn('Auto-items fetch failed, proceeding without auto-discounts:', err?.message);
+      }
+
+      // Convert extra items to invoice_items format
+      const extraItemsAsInvoiceItems = extraItems.map(i => ({
+        service_id: null,
+        description: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        total: i.total
+      }));
+
+      // Service items at actual price (from autoData)
+      const serviceItems = [...(autoData.items || [])];
+      const servicesSubtotal = serviceItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
+
+      // Membership-adjusted service total from bookings (already loaded via loadServiceData)
+      const membershipAdjustedServiceTotal = Math.max(0, parseFloat(serviceAmount || 0));
+      // Discount equals difference between actual service subtotal and membership-adjusted total
+      const membershipDiscount = Math.max(0, parseFloat((servicesSubtotal - membershipAdjustedServiceTotal).toFixed(2)));
+
+      // Combine service items with extra items for invoice items
+      const combinedItems = [...serviceItems, ...extraItemsAsInvoiceItems];
+      const extraItemsTotal = extraItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
+      const subtotal = parseFloat((servicesSubtotal + extraItemsTotal).toFixed(2));
+      const taxRate = parseFloat(salonSettings.billing?.taxRate || autoData.breakdown?.taxRate || 0) || 0;
+      const taxableBase = Math.max(0, subtotal - membershipDiscount);
+      const tax = parseFloat((taxableBase * (taxRate / 100)).toFixed(2));
+      const total = Math.max(0, parseFloat((taxableBase + tax).toFixed(2)));
+
+      const formData = {
+        customer_id: customerId,
+        invoice_date: invoiceDate,
+        items: combinedItems,
+        subtotal,
+        tax,
+        discount: membershipDiscount,
+        total,
+        notes: (() => {
+          const base = document.getElementById("invoiceNotes").value || '';
+          const msg = `After applying membership, service total is ${utils.formatCurrency(membershipAdjustedServiceTotal, currency)}.`;
+          return base ? `${base}\n${msg}` : msg;
+        })(),
+        status: invoice?.status || "pending",
+      };
+
+      try {
+        if (isEdit) {
+          await api.billing.update(invoice.id, formData);
+          utils.showToast("Invoice updated successfully", "success");
+        } else {
+          await api.billing.create(formData);
+          utils.showToast("Invoice created successfully", "success");
+        }
+
+        window.appUtils.closeModal();
+        const contentArea = document.getElementById("contentArea");
+        await render(contentArea);
+      } catch (error) {
+        utils.showToast(error.message || "Invoice operation failed", "error");
       }
     });
-    
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const taxRate = parseFloat(document.getElementById('invoiceTax').value) || 0;
-    const tax = (subtotal * taxRate) / 100;
-    const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
-    const total = subtotal + tax - discount;
-    
-    const formData = {
-      customer_id: parseInt(document.getElementById('invoiceCustomer').value),
-      invoice_date: document.getElementById('invoiceDate').value,
-      items: items,
-      subtotal: subtotal,
-      tax: tax,
-      discount: discount,
-      total: total,
-      notes: document.getElementById('invoiceNotes').value,
-      status: invoice?.status || 'pending'
-    };
-    
-    try {
-      if (isEdit) {
-        await api.billing.update(invoice.id, formData);
-        utils.showToast('Invoice updated successfully', 'success');
-      } else {
-        await api.billing.create(formData);
-        utils.showToast('Invoice created successfully', 'success');
-      }
-      
-      window.appUtils.closeModal();
-      const contentArea = document.getElementById('contentArea');
-      await render(contentArea);
-    } catch (error) {
-      utils.showToast(error.message || 'Operation failed', 'error');
-    }
-  });
 }
 
 function getInvoiceStatusClass(status) {
   const statusClasses = {
-    'pending': 'warning',
-    'paid': 'success',
-    'cancelled': 'danger'
+    pending: "warning",
+    paid: "success",
+    cancelled: "danger",
   };
-  return statusClasses[status] || 'info';
+  return statusClasses[status] || "info";
 }
 
-function getAppointmentStatusClass(status) {
-  const statusClasses = {
-    'scheduled': 'info',
-    'completed': 'success',
-    'cancelled': 'danger',
-    'no-show': 'warning'
-  };
-  return statusClasses[status] || 'info';
-}
-
-// Export functions for global access
 window.billingModule = {
-  async loadAutoItems(customerId, date) {
-    try {
-      const data = await api.billing.getAutoItems({ customer_id: customerId, date });
-      const itemsContainer = document.getElementById('invoiceItems');
-      // Replace items with auto-loaded ones (keep manual ability to add afterwards)
-      itemsContainer.innerHTML = data.items.map(item => `
-        <div class="invoice-item d-flex gap-2 mb-2">
-          <input type="text" placeholder="Description" value="${item.description}" class="item-desc" style="flex: 2">
-          <input type="number" placeholder="Qty" value="${item.quantity}" class="item-qty" style="flex: 1" min="1">
-          <input type="number" placeholder="Price" value="${item.price}" class="item-price" style="flex: 1" step="0.01" min="0">
-          <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">×</button>
-        </div>
-      `).join('');
-
-      // Set discount and show breakdown info
-      const discountInput = document.getElementById('invoiceDiscount');
-      discountInput.value = (data.auto_discount || 0);
-      const autoInfo = document.getElementById('autoDiscountInfo');
-      const breakdownEl = document.getElementById('autoDiscountBreakdown');
-      const b = data.breakdown || {};
-      breakdownEl.textContent = `Free: ${utils.formatCurrency(b.freeDeduction || 0, salonSettings.billing?.currency || 'USD')}, `+
-        `Plan %: ${utils.formatCurrency(b.planDiscount || 0, salonSettings.billing?.currency || 'USD')}, `+
-        `Wallet: ${utils.formatCurrency(b.walletApplied || 0, salonSettings.billing?.currency || 'USD')}, `+
-        `Tax ${b.taxRate || 0}%`;
-      autoInfo.style.display = 'block';
-    } catch (error) {
-      console.error('Auto-items load error:', error);
-      utils.showToast(error.message || 'Failed to load items', 'error');
-    }
-  },
-  viewInvoice: async function(id) {
+  viewInvoice: async function (id) {
     try {
       const invoice = await api.billing.getById(id);
-      const currency = salonSettings.billing?.currency || 'USD';
-      const itemsHTML = invoice.items.map(item => `
+      const currency = salonSettings.billing?.currency || "USD";
+
+      // Fallback: fetch customer if not populated
+      if (!invoice.customer_name && invoice.customer_id) {
+        try {
+          const cust = await api.customers.getById(invoice.customer_id);
+          invoice.customer_name = cust?.name || invoice.customer_name || 'N/A';
+          invoice.customer_phone = cust?.phone || invoice.customer_phone || '';
+        } catch (_) {}
+      }
+
+      const itemsHTML = (invoice.items || []).map(item => `
         <tr>
           <td>${item.description}</td>
           <td>${item.quantity}</td>
@@ -387,8 +467,8 @@ window.billingModule = {
           <td>${utils.formatCurrency(item.total, currency)}</td>
         </tr>
       `).join('');
-      
-      const invoiceHTML = `
+
+      const html = `
         <div style="max-height: 400px; overflow-y: auto;">
           <p><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
           <p><strong>Date:</strong> ${utils.formatDate(invoice.invoice_date)}</p>
@@ -420,20 +500,29 @@ window.billingModule = {
           </div>
         </div>
       `;
-      
-      window.appUtils.showModal('Invoice Details', invoiceHTML);
-    } catch (error) {
-      utils.showToast(error.message || 'Failed to load invoice', 'error');
+
+      window.appUtils.showModal('Invoice Details', html);
+    } catch (err) {
+      utils.showToast(err.message || 'Failed to view invoice', 'error');
     }
   },
-  
-  printInvoice: async function(id) {
+
+  printInvoice: async function (id) {
     try {
       const invoice = await api.billing.getById(id);
-      const currency = salonSettings.billing?.currency || 'USD';
+      const currency = salonSettings.billing?.currency || "USD";
       const currencySymbol = utils.getCurrencySymbol(currency);
-      
-      const itemsHTML = invoice.items.map(item => `
+
+      // Fallback: fetch customer if not populated
+      if (!invoice.customer_name && invoice.customer_id) {
+        try {
+          const cust = await api.customers.getById(invoice.customer_id);
+          invoice.customer_name = cust?.name || invoice.customer_name || 'N/A';
+          invoice.customer_phone = cust?.phone || invoice.customer_phone || '';
+        } catch (_) {}
+      }
+
+      const itemsHTML = (invoice.items || []).map(item => `
         <tr>
           <td>${item.description}</td>
           <td>${item.quantity}</td>
@@ -441,7 +530,7 @@ window.billingModule = {
           <td class="text-right">${utils.formatCurrency(item.total, currency)}</td>
         </tr>
       `).join('');
-      
+
       const printHTML = `
         <div class="invoice-header">
           <h2>${salonSettings.salon?.name || 'Salon Management System'}</h2>
@@ -526,23 +615,18 @@ window.billingModule = {
           <p>${salonSettings.salon?.name || 'Salon Management System'}</p>
         </div>
       `;
-      
+
       utils.printHTML(printHTML, `Invoice-${invoice.invoice_number}`);
-    } catch (error) {
-      utils.showToast(error.message || 'Failed to print invoice', 'error');
+    } catch (err) {
+      utils.showToast(err.message || 'Print failed', 'error');
     }
   },
-  
-  updateStatus: async function(id, status) {
+
+  updateStatus: async function (id, status) {
     if (!status) return;
-    
-    try {
-      await api.billing.updateStatus(id, status);
-      utils.showToast('Status updated successfully', 'success');
-      const contentArea = document.getElementById('contentArea');
-      await render(contentArea);
-    } catch (error) {
-      utils.showToast(error.message || 'Update failed', 'error');
-    }
-  }
+    await api.billing.updateStatus(id, status);
+    utils.showToast("Status updated successfully", "success");
+    const contentArea = document.getElementById("contentArea");
+    await render(contentArea);
+  },
 };

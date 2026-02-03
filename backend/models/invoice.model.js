@@ -39,7 +39,10 @@ class Invoice {
   static async getById(id) {
     try {
       const [rows] = await pool.query(
-        'SELECT * FROM invoices WHERE id = ?',
+        `SELECT i.*, c.name as customer_name, c.phone as customer_phone
+         FROM invoices i
+         LEFT JOIN customers c ON i.customer_id = c.id
+         WHERE i.id = ?`,
         [id]
       );
       

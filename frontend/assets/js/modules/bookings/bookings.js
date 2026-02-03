@@ -3,6 +3,7 @@ let bookings = [];
 let customers = [];
 let mainCategories = [];
 let subCategories = {};
+let categoriesTree = [];
 let services = {};
 let rooms = {};
 let staff = {};
@@ -15,6 +16,83 @@ function reindexServiceItems() {
     if (title) title.textContent = `Service #${idx + 1}`;
   });
 }
+
+// Build nested sub-category options grouped under main categories
+function buildNestedSubCategoryOptions(selectedId = null, onlyParentId = null) {
+  try {
+    const tree = Array.isArray(categoriesTree) ? categoriesTree : [];
+    if (!tree || tree.length === 0) {
+      return '';
+    }
+    const html = tree.map(main => {
+      const mainId = main.id;
+      if (onlyParentId && parseInt(onlyParentId) !== parseInt(mainId)) return '';
+      const subs = Array.isArray(main.sub_categories)
+        ? main.sub_categories
+        : (Array.isArray(main.subcategories) ? main.subcategories : []);
+      if (!subs || subs.length === 0) return '';
+      const options = subs.map(sub => {
+        const selected = (selectedId && parseInt(selectedId) === parseInt(sub.id)) ? 'selected' : '';
+        return `<option value="${sub.id}" data-parent-id="${mainId}" ${selected}>${sub.name}</option>`;
+      }).join('');
+      return `<optgroup label="${main.name}">${options}</optgroup>`;
+    }).join('');
+    return html;
+  } catch (_) {
+    return '';
+  }
+}
+
+// Populate services when category (sub-category) changes
+window.handleCategoryChange = async function(select, index) {
+  const subcategoryId = select.value;
+  
+  const serviceItem = document.querySelector(`.service-item[data-index="${index}"]`);
+  const serviceSelect = serviceItem.querySelector('.service-select');
+
+  if (!subcategoryId) {
+    serviceSelect.innerHTML = '<option value="">Select Service</option>';
+    serviceItem.querySelector('.room-select').innerHTML = '<option value="">Select Room (Optional)</option>';
+    serviceItem.querySelector('.staff-select').innerHTML = '<option value="">Select Staff (Optional)</option>';
+    serviceItem.querySelector('.price-input').value = 0;
+    serviceItem.querySelector('.duration-input').value = 0;
+    calculateSummary();
+    return;
+  }
+
+  // Load services for selected sub-category
+  try {
+    const servicesData = await api.services.getByCategory(subcategoryId);
+    services[subcategoryId] = servicesData;
+    serviceSelect.innerHTML = `
+      <option value="">Select Service</option>
+      ${servicesData.map(service => `
+        <option value="${service.id}" 
+                data-price="${service.base_price}" 
+                data-duration="${service.duration_minutes}">
+          ${service.name} (${service.duration_minutes} min - ₹${utils.formatCurrency(service.base_price)})
+        </option>
+      `).join('')}
+    `;
+    
+    // Auto-select first service and load its details
+    if (servicesData && servicesData.length > 0) {
+      serviceSelect.value = servicesData[0].id;
+      // Trigger loadServiceDetails to load rooms and staff
+      loadServiceDetails(serviceSelect, index);
+    } else {
+      // Clear dependent fields
+      serviceItem.querySelector('.room-select').innerHTML = '<option value="">Select Room (Optional)</option>';
+      serviceItem.querySelector('.staff-select').innerHTML = '<option value="">Select Staff (Optional)</option>';
+      serviceItem.querySelector('.price-input').value = 0;
+      serviceItem.querySelector('.duration-input').value = 0;
+      calculateSummary();
+    }
+  } catch (error) {
+    console.error('Error loading services:', error);
+  }
+};
+
 
 // Top-level submit handler to avoid scope issues
 async function handleBookingFormSubmit(e) {
@@ -29,7 +107,8 @@ async function handleBookingFormSubmit(e) {
     booking_date: formData.get('booking_date'),
     start_time: formData.get('start_time'),
     end_time: e.target.dataset.endTime,
-    discount_amount: parseFloat(formData.get('discount_amount')) || 0,
+    discount_amount: parseFloat(e.target.dataset.discount || '0') || 0, // Auto-calculated from membership
+    tax_amount: parseFloat(e.target.dataset.tax || '0') || 0, // 5% tax
     notes: formData.get('notes')
   };
   console.log('[Bookings] initial bookingData', bookingData);
@@ -76,9 +155,21 @@ async function handleBookingFormSubmit(e) {
   // Collect service items
   const serviceItems = [];
   document.querySelectorAll('.service-item').forEach(item => {
+    const catSel = item.querySelector('.category-select');
+    const subcategoryId = parseInt(catSel?.value || '0') || null;
+    
+    // Get parent category_id from the selected option's data-parent-id attribute
+    let categoryId = null;
+    if (catSel && subcategoryId) {
+      const selectedOption = catSel.querySelector(`option[value="${subcategoryId}"]`);
+      if (selectedOption) {
+        categoryId = parseInt(selectedOption.getAttribute('data-parent-id') || '0') || null;
+      }
+    }
+    
     const serviceData = {
-      category_id: parseInt(item.querySelector('.main-category').value),
-      subcategory_id: parseInt(item.querySelector('.sub-category').value),
+      category_id: categoryId,
+      subcategory_id: subcategoryId,
       service_id: parseInt(item.querySelector('.service-select').value),
       room_id: (function(){
         const v = item.querySelector('.room-select').value;
@@ -541,6 +632,14 @@ async function showBookingForm(booking = null) {
       const categoriesData = await api.services.getMainCategories();
       mainCategories = Array.isArray(categoriesData) ? categoriesData : [];
     }
+    // Always fetch categories tree to render nested sub-category groups
+    try {
+      const tree = await api.services.getCategoriesTree();
+      categoriesTree = Array.isArray(tree) ? tree : [];
+    } catch (err) {
+      console.warn('[Bookings] getCategoriesTree failed; nested sub-categories may not show.', err);
+      categoriesTree = [];
+    }
     
     const formHTML = `
       <div class="booking-form-container">
@@ -617,17 +716,12 @@ async function showBookingForm(booking = null) {
                 <span id="subtotalAmount">₹0.00</span>
               </div>
               <div class="summary-row">
-                <span>Discount:</span>
-                <div class="discount-input">
-                  <input type="number" id="discountAmount" name="discount_amount" 
-                         value="${isEdit ? booking.discount_amount : 0}" min="0" step="0.01" 
-                         oninput="calculateSummary()">
-                  <span>₹</span>
-                </div>
+                <span>Tax (5%):</span>
+                <span id="taxAmount">₹0.00</span>
               </div>
               <div class="summary-row">
-                <span>Plan/Free Deduction:</span>
-                <span id="planDiscountDisplay">₹0.00</span>
+                <span>Discount:</span>
+                <span id="discountDisplay">₹0.00</span>
               </div>
               <div class="summary-row">
                 <span>Wallet Applied:</span>
@@ -693,27 +787,21 @@ function renderServiceItem(item = null, index) {
       </div>
       <div class="form-row service-row-1">
         <div class="form-group">
-          <label>Main Category</label>
-          <select class="main-category" onchange="loadSubCategories(this, ${index})" required>
+          <label>Category</label>
+          <select class="category-select" onchange="handleCategoryChange(this, ${index})" required>
             <option value="">Select Category</option>
-            ${mainCategories.map(cat => `
-              <option value="${cat.id}" ${(item && item.category_id === cat.id) ? 'selected' : ''}>
-                ${cat.name}
-              </option>
-            `).join('')}
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Sub Category</label>
-          <select class="sub-category" onchange="loadServices(this, ${index})" required>
-            <option value="">Select Sub Category</option>
-            ${(item && subCategories[item.category_id]) ? 
-              subCategories[item.category_id].map(sub => `
-                <option value="${sub.id}" ${item.subcategory_id === sub.id ? 'selected' : ''}>
-                  ${sub.name}
-                </option>
-              `).join('') : ''}
+            ${(() => {
+              const tree = Array.isArray(categoriesTree) ? categoriesTree : [];
+              if (tree.length === 0) return '';
+              return tree.map(main => {
+                const subs = Array.isArray(main.sub_categories) ? main.sub_categories : (Array.isArray(main.subcategories) ? main.subcategories : []);
+                if (!subs || subs.length === 0) return '';
+                const subOptions = subs.map(sub => `
+                  <option value="${sub.id}" data-parent-id="${main.id}" ${(item && item.subcategory_id === sub.id) ? 'selected' : ''}>${sub.name}</option>
+                `).join('');
+                return `<optgroup label="${main.name}">${subOptions}</optgroup>`;
+              }).join('');
+            })()}
           </select>
         </div>
         
@@ -758,7 +846,9 @@ function renderServiceItem(item = null, index) {
               `).join('') : ''}
           </select>
         </div>
-        
+      </div>
+
+      <div class="form-row service-row-3">
         <div class="form-group">
           <label>Price (₹)</label>
           <input type="number" class="price-input" value="${item ? item.price : 0}" 
@@ -786,7 +876,6 @@ async function initializeBookingForm(booking = null) {
   if (booking && booking.items && booking.items.length > 0) {
     for (let i = 0; i < booking.items.length; i++) {
       const item = booking.items[i];
-      await loadSubCategoriesForItem(item.category_id, i);
       await loadServicesForItem(item.subcategory_id, i);
     }
   }
@@ -825,6 +914,41 @@ async function initializeBookingForm(booking = null) {
       inp.dataset.basePrice = String(parseFloat(inp.value || '0') || 0);
     }
   });
+
+  // If categoriesTree is available, ensure category selects are populated with nested structure
+  try {
+    const items = document.querySelectorAll('.service-item');
+    items.forEach(item => {
+      const categorySel = item.querySelector('.category-select');
+      if (categorySel) {
+        // Populate with optgroup structure
+        const tree = Array.isArray(categoriesTree) ? categoriesTree : [];
+        const html = `
+          <option value="">Select Category</option>
+          ${tree.map(main => {
+            const subs = Array.isArray(main.sub_categories) ? main.sub_categories : [];
+            if (!subs || subs.length === 0) return '';
+            const subOptions = subs.map(sub => `
+              <option value="${sub.id}" data-parent-id="${main.id}">
+                ${sub.name}
+              </option>
+            `).join('');
+            return `<optgroup label="${main.name}">${subOptions}</optgroup>`;
+          }).join('')}
+        `;
+        categorySel.innerHTML = html;
+        
+        // Pre-select if editing
+        if (booking && booking.items) {
+          const idx = parseInt(item.dataset.index || '0');
+          const pre = booking.items[idx]?.subcategory_id;
+          if (pre) categorySel.value = String(pre);
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('[Bookings] Nested category initialization skipped', err);
+  }
 
 }
 
@@ -881,6 +1005,9 @@ window.addServiceItem = function() {
   if (newCard && newCard.scrollIntoView) {
     newCard.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
   }
+  // Hide subcategory until a main category is chosen
+  const subGroup = newCard.querySelector('.sub-category-group');
+  if (subGroup) { subGroup.style.display = 'none'; }
 };
 
 window.removeServiceItem = function(button) {
@@ -891,34 +1018,7 @@ window.removeServiceItem = function(button) {
 };
 
 window.loadSubCategories = async function(select, index) {
-  const categoryId = select.value;
-  if (!categoryId) return;
-  
-  const serviceItem = document.querySelector(`.service-item[data-index="${index}"]`);
-  const subCategorySelect = serviceItem.querySelector('.sub-category');
-  
-  try {
-    const fetchedSubCategories = await api.services.getSubCategories(categoryId);
-    // Cache for pre-populating when editing
-    subCategories[categoryId] = fetchedSubCategories;
-    subCategorySelect.innerHTML = `
-      <option value="">Select Sub Category</option>
-      ${fetchedSubCategories.map(sub => `
-        <option value="${sub.id}">${sub.name}</option>
-      `).join('')}
-    `;
-    
-    // Clear dependent fields
-    serviceItem.querySelector('.service-select').innerHTML = '<option value="">Select Service</option>';
-    serviceItem.querySelector('.room-select').innerHTML = '<option value="">Select Room (Optional)</option>';
-    serviceItem.querySelector('.staff-select').innerHTML = '<option value="">Select Staff (Optional)</option>';
-    serviceItem.querySelector('.price-input').value = 0;
-    serviceItem.querySelector('.duration-input').value = 0;
-    
-    calculateSummary();
-  } catch (error) {
-    console.error('Error loading subcategories:', error);
-  }
+  // Deprecated: no longer used after unifying category selection.
 };
 
 async function loadSubCategoriesForItem(categoryId, index) {
@@ -1045,7 +1145,7 @@ async function loadStaff(serviceId, index) {
     // Determine department from selected service's main category
     let department = '';
     // Try to infer from cached services by subcategory
-    const subSelect = serviceItem.querySelector('.sub-category');
+    const subSelect = serviceItem.querySelector('.category-select');
     const subId = parseInt(subSelect?.value || '0');
     if (subId && services[subId]) {
       const svc = services[subId].find(s => s.id === parseInt(serviceId));
@@ -1161,7 +1261,7 @@ async function loadStaffForItem(serviceId, index) {
 window.calculateSummary = function() {
   let subtotal = 0;
   let totalDuration = 0;
-  // Build items with base prices to avoid double deduction when visualizing freebies
+  // Build items with base prices
   const serviceItems = Array.from(document.querySelectorAll('.service-item')).map(item => {
     const priceInput = item.querySelector('.price-input');
     const basePrice = parseFloat(priceInput?.dataset.basePrice || priceInput.value || '0') || 0;
@@ -1170,18 +1270,27 @@ window.calculateSummary = function() {
   });
   serviceItems.forEach(s => { subtotal += s.basePrice; totalDuration += s.duration; });
   
-  // Get discount
-  const discountInput = document.getElementById('discountAmount');
-  let discount = parseFloat(discountInput.value) || 0;
+  // Calculate tax (5% default)
+  const TAX_PERCENTAGE = 5;
+  const tax = subtotal * (TAX_PERCENTAGE / 100);
   
-  // Validate discount
-  if (discount > subtotal) {
-    discount = subtotal;
-    discountInput.value = subtotal;
-    utils.showToast('Discount cannot exceed subtotal', 'warning');
+  // Get discount percentage from membership plan
+  let discount = 0;
+  if (window.bookingMembership && window.bookingMembership.discount_percentage) {
+    discount = subtotal * (parseFloat(window.bookingMembership.discount_percentage) / 100);
   }
   
-  const total = subtotal - discount;
+  // Get wallet credits from membership
+  let walletApplied = 0;
+  const membershipWallet = parseFloat(window.bookingMembership?.wallet_balance || 0);
+  if (membershipWallet > 0) {
+    // Calculate what's left after subtotal, tax, and discount
+    const amountBeforeWallet = subtotal + tax - discount;
+    walletApplied = Math.min(membershipWallet, Math.max(0, amountBeforeWallet));
+  }
+  
+  const total = subtotal + tax - discount;
+  const finalTotal = Math.max(0, total - walletApplied);
   
   // Calculate end time
   const startTime = document.getElementById('startTime').value;
@@ -1196,76 +1305,50 @@ window.calculateSummary = function() {
   
   // Update display
   document.getElementById('subtotalAmount').textContent = `₹${utils.formatCurrency(subtotal)}`;
-
-  // Auto-apply membership benefits when available
-  let planDeduction = 0;
-  let walletApplied = 0;
-  let effectiveFree = 0;
-  const membershipActive = window.bookingMembership && (window.bookingMembership.status === 'active' || window.bookingMembership.status === 'pending');
-  if (membershipActive) {
-    const percent = parseFloat(window.bookingMembership.discount_percentage || 0);
-    const freeRemaining = parseInt(window.bookingMembership.free_services_remaining || 0);
-    // Sort items by base price descending for most-expensive-first application
-    const sortedItems = [...serviceItems].sort((a,b) => b.basePrice - a.basePrice);
-    // Reset visual prices to base before applying freebies
-    sortedItems.forEach(s => { s.priceInput.value = s.basePrice; s.priceInput.classList.remove('free-applied'); });
-
-    effectiveFree = Math.min(freeRemaining, sortedItems.length);
-    // If free covers ALL items, full waiver
-    if (effectiveFree >= sortedItems.length && sortedItems.length > 0) {
-      planDeduction = subtotal; // Full waiver
-      walletApplied = 0; // No wallet needed
-      sortedItems.forEach(s => { s.priceInput.classList.add('free-applied'); });
-    } else {
-      const freeItems = sortedItems.slice(0, effectiveFree);
-      const freeDeduction = freeItems.reduce((sum, s) => sum + s.basePrice, 0);
-      freeItems.forEach(s => { s.priceInput.classList.add('free-applied'); });
-      const afterFree = Math.max(0, subtotal - freeDeduction);
-      const percentDiscount = percent > 0 ? (afterFree * (percent/100)) : 0;
-      planDeduction = freeDeduction + percentDiscount;
-      const walletBal = parseFloat(window.bookingMembership.wallet_balance || 0);
-      const remainingAfter = Math.max(0, afterFree - percentDiscount - discount);
-      walletApplied = Math.min(walletBal, remainingAfter);
-    }
-  }
-
-  document.getElementById('planDiscountDisplay').textContent = `₹${utils.formatCurrency(planDeduction)}`;
+  document.getElementById('taxAmount').textContent = `₹${utils.formatCurrency(tax)}`;
+  document.getElementById('discountDisplay').textContent = `₹${utils.formatCurrency(discount)}`;
   document.getElementById('walletAppliedDisplay').textContent = `₹${utils.formatCurrency(walletApplied)}`;
-
-  const finalTotal = Math.max(0, total - planDeduction - walletApplied);
   document.getElementById('totalAmount').textContent = `₹${utils.formatCurrency(finalTotal)}`;
   document.getElementById('totalDuration').textContent = `${totalDuration} minutes`;
   document.getElementById('endTime').textContent = endTime;
   
-  // Update end time in form data
+  // Update form data
   document.getElementById('bookingForm').dataset.endTime = endTime;
   document.getElementById('bookingForm').dataset.totalDuration = totalDuration;
-  document.getElementById('bookingForm').dataset.membershipApply = (membershipActive ? 'true' : 'false');
-  document.getElementById('bookingForm').dataset.applyFree = (membershipActive ? 'true' : 'false');
-  document.getElementById('bookingForm').dataset.applyPercent = (membershipActive ? 'true' : 'false');
-  document.getElementById('bookingForm').dataset.applyWallet = (membershipActive ? 'true' : 'false');
-  document.getElementById('bookingForm').dataset.freeCount = String(effectiveFree || 0);
-  // Persist preview totals for backend if needed
   const formEl = document.getElementById('bookingForm');
   formEl.dataset.subtotal = String(subtotal);
-  formEl.dataset.planDeduction = String(planDeduction);
+  formEl.dataset.tax = String(tax);
+  formEl.dataset.discount = String(discount);
   formEl.dataset.walletApplied = String(walletApplied);
   formEl.dataset.finalTotal = String(finalTotal);
 };
 
 async function fetchCustomerMembership(customerId) {
   try {
-    const membership = await api.memberships.getForCustomer(customerId);
+    // Fetch both customer details and membership
+    const [customer, membership] = await Promise.all([
+      api.customers.getById(customerId),
+      api.memberships.getForCustomer(customerId)
+    ]);
+    
+    // Store customer data (includes wallet_balance)
+    window.bookingCustomer = customer || null;
+    
+    // Store membership data
     window.bookingMembership = membership || null;
+    
     // Set available free count hint and max
     const freeCountEl = document.getElementById('freeCount');
     const hintEl = document.getElementById('freeCountHint');
     const freeAvail = parseInt(membership?.free_services_remaining || 0) || 0;
     if (freeCountEl) { freeCountEl.max = String(freeAvail); }
     if (hintEl) { hintEl.textContent = freeAvail > 0 ? `(Available: ${freeAvail})` : '(No free services)'; }
-    // Recalculate summary to reflect membership
+    
+    // Recalculate summary to reflect membership and wallet
     calculateSummary();
   } catch (error) {
+    console.error('Error fetching customer/membership:', error);
+    window.bookingCustomer = null;
     window.bookingMembership = null;
   }
 }

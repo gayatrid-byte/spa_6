@@ -13,13 +13,10 @@ CREATE TABLE IF NOT EXISTS membership_plans (
   name VARCHAR(100) NOT NULL,
   description TEXT NULL,
   tier ENUM('silver', 'gold', 'platinum', 'diamond') NOT NULL DEFAULT 'silver',
-  duration_days INT NOT NULL,
+  duration_months INT NOT NULL,
   price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
-  discount_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  discount_percentage DECIMAL(5,2) NOT NULL DEFAULT 15.00,
   wallet_credits DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  free_services INT NOT NULL DEFAULT 0,
-  guest_passes INT NOT NULL DEFAULT 0,
   priority_level ENUM('standard','priority','vip') NOT NULL DEFAULT 'standard',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -39,8 +36,7 @@ CREATE TABLE IF NOT EXISTS memberships (
   end_date DATE NOT NULL,
   status ENUM('active','expired','cancelled','suspended','pending') NOT NULL DEFAULT 'active',
   wallet_balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  free_services_remaining INT NOT NULL DEFAULT 0,
-  guest_passes_remaining INT NOT NULL DEFAULT 0,
+  
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_customer (customer_id),
@@ -87,8 +83,8 @@ CREATE TABLE IF NOT EXISTS membership_plan_time_restrictions (
 );
 
 -- Seed example plans (optional)
-INSERT INTO membership_plans (salon_id, name, description, tier, duration_days, price, is_recurring, discount_percentage, wallet_credits, free_services, guest_passes, priority_level, is_active)
+INSERT INTO membership_plans (salon_id, name, description, tier, duration_months, price, discount_percentage, wallet_credits, priority_level, is_active)
 VALUES
-(1, 'Silver 3-Month', 'Entry-level membership', 'silver', 90, 99.00, FALSE, 5.00, 20.00, 1, 0, 'standard', TRUE),
-(1, 'Gold 6-Month', 'Mid-tier with extra perks', 'gold', 180, 199.00, FALSE, 10.00, 50.00, 2, 1, 'priority', TRUE),
-(1, 'Platinum 12-Month', 'High-tier membership', 'platinum', 365, 349.00, FALSE, 15.00, 100.00, 4, 2, 'vip', TRUE);
+(1, 'Silver 3-Month', 'Entry-level membership', 'silver', 3, 99.00, 5.00, 20.00, 'standard', TRUE),
+(1, 'Gold 6-Month', 'Mid-tier with extra perks', 'gold', 6, 199.00, 10.00, 50.00, 'priority', TRUE),
+(1, 'Platinum 12-Month', 'High-tier membership', 'platinum', 12, 349.00, 15.00, 100.00, 'vip', TRUE);

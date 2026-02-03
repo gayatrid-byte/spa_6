@@ -53,8 +53,12 @@ export async function render(container) {
           <div class="grid grid-3 gap-3">
 
             <div class="form-group">
-              <label>Duration (Days)</label>
-              <input name="duration_days" type="number" min="1" placeholder="30" required />
+              <label>Duration (Months)</label>
+              <select name="duration_months" required>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+              </select>
             </div>
 
             <div class="form-group">
@@ -62,17 +66,11 @@ export async function render(container) {
               <input name="price" type="number" step="0.01" placeholder="99.99" required />
             </div>
 
-            <div class="form-group">
-              <label>Recurring</label>
-              <select name="is_recurring">
-                <option value="false">No</option>
-                <option value="true">Yes</option>
-              </select>
-            </div>
+            
 
             <div class="form-group">
               <label>Discount (%)</label>
-              <input name="discount_percentage" type="number" step="0.01" placeholder="10" />
+              <input name="discount_percentage" type="number" step="0.01" placeholder="15" value="15" />
             </div>
 
             <div class="form-group">
@@ -86,33 +84,6 @@ export async function render(container) {
 
           </div>
         </div>
-
-
-        <!-- BENEFITS -->
-        <div class="section-card mb-3">
-          <h4 class="section-title">🎁 Plan Benefits</h4>
-
-          <div class="grid grid-3 gap-3">
-
-            <div class="form-group">
-              <label>Wallet Credits</label>
-              <input name="wallet_credits" type="number" step="0.01" placeholder="50" />
-            </div>
-
-            <div class="form-group">
-              <label>Free Services</label>
-              <input name="free_services" type="number" placeholder="5" />
-            </div>
-
-            <div class="form-group">
-              <label>Guest Passes</label>
-              <input name="guest_passes" type="number" placeholder="2" />
-            </div>
-
-          </div>
-        </div>
-
-
         <!-- ACTION BAR -->
         <div class="form-actions">
 
@@ -131,4 +102,42 @@ export async function render(container) {
     </div>
   </div>
   `;
+
+  // Wallet credits removed; backend will default to price.
+
+  // Cancel: navigate back to memberships module
+  const cancelBtn = container.querySelector('#cancelBtn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      window.location.hash = 'memberships';
+    });
+  }
+
+  // Handle form submission
+  const createPlanForm = container.querySelector('#createPlanForm');
+  if (createPlanForm) {
+    createPlanForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(createPlanForm);
+      const planData = {
+        name: formData.get('name'),
+        tier: formData.get('tier'),
+        description: formData.get('description'),
+        duration_months: parseInt(formData.get('duration_months')),
+        price: parseFloat(formData.get('price')),
+        discount_percentage: parseFloat(formData.get('discount_percentage')) || 0,
+        priority_level: formData.get('priority_level')
+      };
+
+      try {
+        const result = await api.memberships.createPlan(planData);
+        utils.showToast('Membership plan created successfully!', 'success');
+        window.location.hash = 'memberships';
+      } catch (error) {
+        console.error('Error creating membership plan:', error);
+        utils.showToast('Error creating membership plan: ' + (error.message || 'Unknown error'), 'error');
+      }
+    });
+  }
 }
