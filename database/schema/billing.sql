@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS invoices (
   total DECIMAL(10, 2) NOT NULL,
   status ENUM('pending', 'paid', 'cancelled') DEFAULT 'pending',
   notes TEXT,
+  booking_ids JSON,
+  payment_methods JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_salon_id (salon_id),

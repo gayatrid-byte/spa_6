@@ -386,6 +386,42 @@ th {
   letter-spacing: 0.5px;
 }
 
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+th.sortable:hover {
+  background-color: #e8e8e8;
+}
+
+.sort-arrow {
+  display: inline-flex;
+  flex-direction: column;
+  margin-left: 8px;
+  font-size: 10px;
+  opacity: 0.4;
+  vertical-align: middle;
+}
+
+.sort-arrow .arrow-up,
+.sort-arrow .arrow-down {
+  line-height: 0.8;
+  height: 8px;
+}
+
+.sort-arrow.active-asc .arrow-up {
+  opacity: 1;
+  color: var(--primary-teal);
+}
+
+.sort-arrow.active-desc .arrow-down {
+  opacity: 1;
+  color: var(--primary-teal);
+}
+
 td {
   padding: 12px 20px;
   border-bottom: 1px solid var(--border-color);

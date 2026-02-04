@@ -4,6 +4,7 @@ let salonSettings = {};
 let serviceBookings = [];
 let serviceAmount = 0;
 let servicesActualSubtotal = 0;
+let sortConfig = { column: null, direction: 'asc' };
 
 export async function render(container) {
   try {
@@ -63,12 +64,22 @@ function renderInvoicesTable(invoiceList) {
         <tr>
           <th>Invoice #</th>
           <th>Customer</th>
-          <th>Date</th>
+          <th class="sortable" data-column="invoice_date">
+            Date 
+            <span class="sort-arrow ${sortConfig.column === 'invoice_date' ? (sortConfig.direction === 'asc' ? 'active-asc' : 'active-desc') : ''}">
+              <span class="arrow-up">▲</span><span class="arrow-down">▼</span>
+            </span>
+          </th>
           <th>Subtotal</th>
           <th>Tax</th>
           <th>Discount</th>
           <th>Total</th>
-          <th>Status</th>
+          <th class="sortable" data-column="status">
+            Status 
+            <span class="sort-arrow ${sortConfig.column === 'status' ? (sortConfig.direction === 'asc' ? 'active-asc' : 'active-desc') : ''}">
+              <span class="arrow-up">▲</span><span class="arrow-down">▼</span>
+            </span>
+          </th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -111,12 +122,61 @@ function attachEventListeners(container) {
     const filtered = status
       ? await api.billing.getAll({ status })
       : await api.billing.getAll();
-    container.querySelector("#invoicesTable").innerHTML =
-      renderInvoicesTable(filtered);
+    invoices = filtered;
+    updateTable(container);
+  });
+
+  // Add sorting event listeners
+  const sortableHeaders = container.querySelectorAll('th.sortable');
+  sortableHeaders.forEach(header => {
+    header.addEventListener('click', () => {
+      const column = header.dataset.column;
+      if (sortConfig.column === column) {
+        sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortConfig.column = column;
+        sortConfig.direction = 'asc';
+      }
+      updateTable(container);
+    });
   });
 
   const addBtn = container.querySelector("#addInvoiceBtn");
   addBtn.addEventListener("click", () => showInvoiceForm());
+}
+
+function updateTable(container) {
+  const sorted = sortInvoices(invoices);
+  container.querySelector("#invoicesTable").innerHTML = renderInvoicesTable(sorted);
+  attachEventListeners(container);
+}
+
+function sortInvoices(list) {
+  if (!sortConfig.column) return list;
+  
+  return [...list].sort((a, b) => {
+    let aValue = a[sortConfig.column];
+    let bValue = b[sortConfig.column];
+
+    // Handle null values
+    if (aValue === null || aValue === undefined) aValue = '';
+    if (bValue === null || bValue === undefined) bValue = '';
+
+    // Compare values
+    if (typeof aValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    let comparison = 0;
+    if (aValue < bValue) {
+      comparison = -1;
+    } else if (aValue > bValue) {
+      comparison = 1;
+    }
+
+    return sortConfig.direction === 'asc' ? comparison : -comparison;
+  });
 }
 
 async function showInvoiceForm(invoice = null) {
@@ -181,6 +241,35 @@ async function showInvoiceForm(invoice = null) {
         <h5>Invoice Summary</h5>
         <div id="summaryDetails">
           <p>Select customer and date to fetch bookings</p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Payment Status *</label>
+        <select id="invoiceStatus" name="status" required>
+          <option value="pending" ${invoice?.status === 'pending' ? 'selected' : ''}>Pending</option>
+          <option value="paid" ${invoice?.status === 'paid' || !invoice ? 'selected' : ''}>Paid</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Payment Method(s)</label>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" name="payment_method" value="cash" 
+              ${invoice?.payment_methods?.includes('cash') ? 'checked' : ''}>
+            <span>Cash</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" name="payment_method" value="upi" 
+              ${invoice?.payment_methods?.includes('upi') ? 'checked' : ''}>
+            <span>UPI</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" name="payment_method" value="card" 
+              ${invoice?.payment_methods?.includes('card') ? 'checked' : ''}>
+            <span>Card</span>
+          </label>
         </div>
       </div>
 
@@ -261,22 +350,80 @@ async function showInvoiceForm(invoice = null) {
       });
 
       const currency = salonSettings.billing?.currency || "USD";
-      serviceBookings = bookings || [];
+      
+      // Filter out bookings that already have invoices
+      let availableBookings = [];
+      const invoicedBookingIds = new Set();
+      
+      if (bookings && bookings.length > 0) {
+        // Get all existing invoices for this customer with their items
+        const allInvoices = await api.billing.getAll();
+        const customerInvoices = allInvoices.filter(inv => inv.customer_id === customerId);
+        
+        console.log('Customer invoices:', customerInvoices.length);
+        console.log('Full invoices with items:', customerInvoices);
+        
+        // Extract all booking IDs from invoice items
+        customerInvoices.forEach(inv => {
+          console.log('Processing invoice:', inv.invoice_number, 'items:', inv.items);
+          if (inv.items && inv.items.length > 0) {
+            inv.items.forEach((item, idx) => {
+              console.log(`  Item ${idx}:`, item);
+              console.log(`    booking_ids value:`, item.booking_ids);
+              console.log(`    booking_ids type:`, typeof item.booking_ids);
+              
+              // Check if item has booking_ids field
+              if (item.booking_ids) {
+                let ids;
+                if (typeof item.booking_ids === 'string') {
+                  ids = JSON.parse(item.booking_ids);
+                } else if (Array.isArray(item.booking_ids)) {
+                  ids = item.booking_ids;
+                } else {
+                  ids = [];
+                }
+                
+                console.log('Found invoiced booking_ids:', ids);
+                ids.forEach(id => invoicedBookingIds.add(id));
+              } else {
+                console.log('  No booking_ids in item');
+              }
+            });
+          }
+        });
+        
+        console.log('Invoiced booking IDs:', Array.from(invoicedBookingIds));
+        
+        // Filter to only include bookings without invoices
+        availableBookings = bookings.filter(b => !invoicedBookingIds.has(b.id));
+      }
+      
+      serviceBookings = availableBookings || [];
 
-      if (bookings.length === 0) {
+      console.log('Available (non-invoiced) booking IDs:', serviceBookings.map(b => Number(b.id)));
+
+      // Debug log to verify filtering
+      console.log('Total bookings for date:', bookings?.length || 0);
+      console.log('Available (non-invoiced) bookings:', availableBookings.length);
+      console.log('Invoiced booking IDs:', Array.from(invoicedBookingIds));
+
+      if (availableBookings.length === 0) {
         document.getElementById("serviceDetails").style.display = "none";
         serviceAmount = 0;
         servicesActualSubtotal = 0;
-        utils.showToast("No bookings found for that day", "info");
+        const message = bookings.length > 0 ? "All bookings for that day already have invoices - you can add extra items only" : "No bookings found for that day";
+        utils.showToast(message, "info");
+        
+        // Don't fetch autoData if there are no available bookings
       } else {
-        serviceAmount = bookings.reduce(
+        serviceAmount = availableBookings.reduce(
           (sum, b) => sum + (parseFloat(b.total_amount) || 0),
           0
         );
 
         document.getElementById("serviceInfo").innerHTML = `
           <ul>
-            ${bookings
+            ${availableBookings
               .map(
                 (b) =>
                   `<li>${utils.formatTime(b.start_time)} - ${
@@ -291,14 +438,39 @@ async function showInvoiceForm(invoice = null) {
           )}</p>
         `;
         document.getElementById("serviceDetails").style.display = "block";
-      }
+        
+        // Fetch actual-priced service items only if there are available bookings
+        try {
+          const autoData = await api.billing.getAutoItems({ customer_id: customerId, date, booking_ids: availableBookings.map(b => b.id).join(',') });
+          const bookingIdSet = new Set((availableBookings || []).map(b => Number(b.id)));
+          const filteredItems = (autoData.items || []).filter(it => {
+            const bid = Number(it.booking_id ?? it.bookingId ?? it.bookingid);
+            return bookingIdSet.has(bid);
+          });
 
-      // Also fetch actual-priced service items for the same day to compute true subtotal
-      try {
-        const autoData = await api.billing.getAutoItems({ customer_id: customerId, date });
-        servicesActualSubtotal = (autoData.items || []).reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
-      } catch (_) {
-        servicesActualSubtotal = 0;
+          // Prefer booking table subtotal/discount/total for accuracy
+          const filteredTotals = (autoData.booking_totals || []).filter(t => bookingIdSet.has(Number(t.booking_id)));
+          const bookingSubtotalSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.subtotal_amount) || 0), 0);
+          const bookingDiscountSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.discount_amount) || 0), 0);
+          const bookingTotalSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.total_amount) || 0), 0);
+
+          console.log('Auto-data filtered booking_totals:', filteredTotals);
+          console.log('Auto-data filtered items:', filteredItems);
+          console.log('Booking subtotal/discount/total sums:', { bookingSubtotalSum, bookingDiscountSum, bookingTotalSum });
+          console.log('Auto-data raw booking_totals:', autoData.booking_totals);
+          console.log('Auto-data raw items:', autoData.items);
+
+          servicesActualSubtotal = filteredTotals.length > 0
+            ? bookingSubtotalSum
+            : filteredItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
+
+          // Also update serviceAmount (after membership) from booking totals if present
+          if (filteredTotals.length > 0) {
+            serviceAmount = bookingTotalSum;
+          }
+        } catch (_) {
+          servicesActualSubtotal = 0;
+        }
       }
 
       window.updateInvoiceCalculations();
@@ -321,7 +493,7 @@ async function showInvoiceForm(invoice = null) {
 
     const membershipDiscount = Math.max(0, parseFloat((servicesActualSubtotal - serviceAmount).toFixed(2)));
     const subtotal = parseFloat((servicesActualSubtotal + extraItemsTotal).toFixed(2));
-    const taxRate = parseFloat(salonSettings.billing?.taxRate || 0) || 0;
+    const taxRate = parseFloat(salonSettings.billing?.taxRate ?? 5) || 5;
     const taxAmount = parseFloat((Math.max(0, subtotal - membershipDiscount) * (taxRate / 100)).toFixed(2));
     const grandTotal = Math.max(0, parseFloat((subtotal - membershipDiscount + taxAmount).toFixed(2)));
 
@@ -348,6 +520,12 @@ async function showInvoiceForm(invoice = null) {
       e.preventDefault();
       const currency = salonSettings.billing?.currency || "USD";
 
+      // Get selected payment methods
+      const paymentMethods = [];
+      document.querySelectorAll('input[name="payment_method"]:checked').forEach(checkbox => {
+        paymentMethods.push(checkbox.value);
+      });
+
       const extraItems = [];
       document.querySelectorAll(".extra-item").forEach((item) => {
         const name = item.querySelector(".item-name").value;
@@ -365,10 +543,23 @@ async function showInvoiceForm(invoice = null) {
       // Fetch auto items (actual service prices) for the selected customer and date
       const customerId = parseInt(document.getElementById("invoiceCustomer").value);
       const invoiceDate = document.getElementById("invoiceDate").value;
-      let autoData = { items: [], auto_discount: 0, tax: 0, breakdown: { taxRate: parseFloat(salonSettings.billing?.taxRate || 0) } };
+      let autoData = { items: [], booking_totals: [], auto_discount: 0, tax: 0, breakdown: { taxRate: parseFloat(salonSettings.billing?.taxRate || 0) } };
+      
+      // Only fetch autoData if there are available bookings to invoice
       try {
-        if (customerId && invoiceDate) {
-          autoData = await api.billing.getAutoItems({ customer_id: customerId, date: invoiceDate });
+        if (customerId && invoiceDate && serviceBookings.length > 0) {
+          autoData = await api.billing.getAutoItems({ customer_id: customerId, date: invoiceDate, booking_ids: serviceBookings.map(b => b.id).join(',') });
+          // Keep only items corresponding to the non-invoiced bookings using booking_id match (normalize to numbers)
+          const bookingIdSet = new Set(serviceBookings.map(b => Number(b.id)));
+          autoData.items = (autoData.items || []).filter(it => {
+            const bid = Number(it.booking_id ?? it.bookingId ?? it.bookingid);
+            return bookingIdSet.has(bid);
+          });
+          autoData.booking_totals = (autoData.booking_totals || []).filter(t => bookingIdSet.has(Number(t.booking_id)));
+
+          console.log('Submit autoData booking_totals (filtered):', autoData.booking_totals);
+          console.log('Submit autoData items (filtered):', autoData.items);
+          console.log('Submit bookingIdSet:', Array.from(bookingIdSet));
         }
       } catch (err) {
         console.warn('Auto-items fetch failed, proceeding without auto-discounts:', err?.message);
@@ -383,9 +574,30 @@ async function showInvoiceForm(invoice = null) {
         total: i.total
       }));
 
-      // Service items at actual price (from autoData)
-      const serviceItems = [...(autoData.items || [])];
-      const servicesSubtotal = serviceItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
+      // Service items at actual price (from autoData) - only if there are available bookings
+      const serviceItems = serviceBookings.length > 0 ? [...(autoData.items || [])] : [];
+      
+      console.log('serviceBookings count:', serviceBookings.length);
+      console.log('autoData.items count:', serviceItems.length);
+      console.log('serviceBookings:', serviceBookings);
+      console.log('autoData.items:', serviceItems);
+      
+      // Add booking_ids to each service item from serviceBookings
+      serviceItems.forEach((item, index) => {
+        if (serviceBookings[index]) {
+          item.booking_ids = [Number(serviceBookings[index].id)];
+          console.log(`Added booking_ids ${item.booking_ids} to item ${index}: ${item.description}`);
+        } else {
+          console.log(`No serviceBooking at index ${index}, item: ${item.description}`);
+        }
+      });
+      
+      console.log('serviceItems after adding booking_ids:', serviceItems);
+      
+      const bookingSubtotalSum = (autoData.booking_totals || []).reduce((s, t) => s + (parseFloat(t.subtotal_amount) || 0), 0);
+      const servicesSubtotal = bookingSubtotalSum > 0
+        ? bookingSubtotalSum
+        : serviceItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
 
       // Membership-adjusted service total from bookings (already loaded via loadServiceData)
       const membershipAdjustedServiceTotal = Math.max(0, parseFloat(serviceAmount || 0));
@@ -396,7 +608,7 @@ async function showInvoiceForm(invoice = null) {
       const combinedItems = [...serviceItems, ...extraItemsAsInvoiceItems];
       const extraItemsTotal = extraItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
       const subtotal = parseFloat((servicesSubtotal + extraItemsTotal).toFixed(2));
-      const taxRate = parseFloat(salonSettings.billing?.taxRate || autoData.breakdown?.taxRate || 0) || 0;
+      const taxRate = parseFloat(salonSettings.billing?.taxRate ?? autoData.breakdown?.taxRate ?? 5) || 5;
       const taxableBase = Math.max(0, subtotal - membershipDiscount);
       const tax = parseFloat((taxableBase * (taxRate / 100)).toFixed(2));
       const total = Math.max(0, parseFloat((taxableBase + tax).toFixed(2)));
@@ -405,16 +617,18 @@ async function showInvoiceForm(invoice = null) {
         customer_id: customerId,
         invoice_date: invoiceDate,
         items: combinedItems,
+        booking_ids: serviceBookings.map(b => b.id), // Store booking IDs to prevent duplicates
         subtotal,
         tax,
         discount: membershipDiscount,
         total,
+        status: document.getElementById("invoiceStatus").value,
+        payment_methods: paymentMethods,
         notes: (() => {
           const base = document.getElementById("invoiceNotes").value || '';
           const msg = `After applying membership, service total is ${utils.formatCurrency(membershipAdjustedServiceTotal, currency)}.`;
           return base ? `${base}\n${msg}` : msg;
         })(),
-        status: invoice?.status || "pending",
       };
 
       try {

@@ -29,9 +29,46 @@ class Invoice {
 
       query += ' ORDER BY i.invoice_date DESC';
 
+      console.log('Executing getAll query:', query, 'params:', params);
       const [rows] = await pool.query(query, params);
-      return rows;
+      console.log('getAll returned rows:', rows.length);
+      
+      // Fetch items for each invoice and parse JSON fields
+      const invoices = await Promise.all(
+        rows.map(async (row) => {
+          try {
+            const [items] = await pool.query(
+              'SELECT * FROM invoice_items WHERE invoice_id = ?',
+              [row.id]
+            );
+            
+            console.log(`Fetched ${items.length} items for invoice ${row.id}`);
+            
+            return {
+              ...row,
+              booking_ids: row.booking_ids ? (typeof row.booking_ids === 'string' ? JSON.parse(row.booking_ids) : row.booking_ids) : [],
+              payment_methods: row.payment_methods ? (typeof row.payment_methods === 'string' ? JSON.parse(row.payment_methods) : row.payment_methods) : [],
+              items: items.map(item => ({
+                ...item,
+                booking_ids: item.booking_ids ? (typeof item.booking_ids === 'string' ? JSON.parse(item.booking_ids) : item.booking_ids) : []
+              }))
+            };
+          } catch (err) {
+            console.error(`Error fetching items for invoice ${row.id}:`, err.message);
+            return {
+              ...row,
+              booking_ids: row.booking_ids ? (typeof row.booking_ids === 'string' ? JSON.parse(row.booking_ids) : row.booking_ids) : [],
+              payment_methods: row.payment_methods ? (typeof row.payment_methods === 'string' ? JSON.parse(row.payment_methods) : row.payment_methods) : [],
+              items: []
+            };
+          }
+        })
+      );
+      
+      console.log('getAll returning invoices:', invoices.length);
+      return invoices;
     } catch (error) {
+      console.error('Error in getAll:', error.message);
       throw new Error(`Error getting invoices: ${error.message}`);
     }
   }
@@ -47,15 +84,27 @@ class Invoice {
       );
       
       if (rows[0]) {
+        // Parse JSON fields
+        const invoice = rows[0];
+        invoice.booking_ids = invoice.booking_ids ? (typeof invoice.booking_ids === 'string' ? JSON.parse(invoice.booking_ids) : invoice.booking_ids) : [];
+        invoice.payment_methods = invoice.payment_methods ? (typeof invoice.payment_methods === 'string' ? JSON.parse(invoice.payment_methods) : invoice.payment_methods) : [];
+        
         // Get invoice items
         const [items] = await pool.query(
           'SELECT * FROM invoice_items WHERE invoice_id = ?',
           [id]
         );
-        rows[0].items = items;
+        
+        // Parse booking_ids in each item
+        invoice.items = items.map(item => ({
+          ...item,
+          booking_ids: item.booking_ids ? (typeof item.booking_ids === 'string' ? JSON.parse(item.booking_ids) : item.booking_ids) : []
+        }));
+        
+        return invoice;
       }
       
-      return rows[0];
+      return null;
     } catch (error) {
       throw new Error(`Error getting invoice: ${error.message}`);
     }
@@ -70,8 +119,21 @@ class Invoice {
       const invoiceNumber = generateInvoiceNumber();
 
       const [result] = await connection.query(
-        'INSERT INTO invoices (salon_id, invoice_number, customer_id, invoice_date, subtotal, tax, discount, total, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [invoiceData.salon_id, invoiceNumber, invoiceData.customer_id, invoiceData.invoice_date, invoiceData.subtotal, invoiceData.tax || 0, invoiceData.discount || 0, invoiceData.total, invoiceData.status || 'pending', invoiceData.notes]
+        'INSERT INTO invoices (salon_id, invoice_number, customer_id, invoice_date, subtotal, tax, discount, total, status, notes, booking_ids, payment_methods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          invoiceData.salon_id,
+          invoiceNumber,
+          invoiceData.customer_id,
+          invoiceData.invoice_date,
+          invoiceData.subtotal,
+          invoiceData.tax || 0,
+          invoiceData.discount || 0,
+          invoiceData.total,
+          invoiceData.status || 'pending',
+          invoiceData.notes,
+          JSON.stringify(invoiceData.booking_ids || []),
+          JSON.stringify(invoiceData.payment_methods || [])
+        ]
       );
 
       const invoiceId = result.insertId;
@@ -79,9 +141,13 @@ class Invoice {
       // Add invoice items
       if (invoiceData.items && invoiceData.items.length > 0) {
         for (const item of invoiceData.items) {
+          const bookingIds = JSON.stringify(item.booking_ids || []);
+          
+          console.log(`Inserting item: ${item.description}, booking_ids: ${bookingIds}`);
+          
           await connection.query(
-            'INSERT INTO invoice_items (invoice_id, service_id, description, quantity, price, total) VALUES (?, ?, ?, ?, ?, ?)',
-            [invoiceId, item.service_id, item.description, item.quantity, item.price, item.total]
+            'INSERT INTO invoice_items (invoice_id, service_id, description, quantity, price, total, booking_ids) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [invoiceId, item.service_id, item.description, item.quantity, item.price, item.total, bookingIds]
           );
         }
       }
@@ -103,8 +169,20 @@ class Invoice {
 
       // Update invoice
       await connection.query(
-        'UPDATE invoices SET customer_id = ?, invoice_date = ?, subtotal = ?, tax = ?, discount = ?, total = ?, status = ?, notes = ? WHERE id = ?',
-        [invoiceData.customer_id, invoiceData.invoice_date, invoiceData.subtotal, invoiceData.tax, invoiceData.discount, invoiceData.total, invoiceData.status, invoiceData.notes, id]
+        'UPDATE invoices SET customer_id = ?, invoice_date = ?, subtotal = ?, tax = ?, discount = ?, total = ?, status = ?, notes = ?, booking_ids = ?, payment_methods = ? WHERE id = ?',
+        [
+          invoiceData.customer_id,
+          invoiceData.invoice_date,
+          invoiceData.subtotal,
+          invoiceData.tax,
+          invoiceData.discount,
+          invoiceData.total,
+          invoiceData.status,
+          invoiceData.notes,
+          JSON.stringify(invoiceData.booking_ids || []),
+          JSON.stringify(invoiceData.payment_methods || []),
+          id
+        ]
       );
 
       // Delete existing items
@@ -116,9 +194,11 @@ class Invoice {
       // Add new items
       if (invoiceData.items && invoiceData.items.length > 0) {
         for (const item of invoiceData.items) {
+          const bookingIds = JSON.stringify(item.booking_ids || []);
+          
           await connection.query(
-            'INSERT INTO invoice_items (invoice_id, service_id, description, quantity, price, total) VALUES (?, ?, ?, ?, ?, ?)',
-            [id, item.service_id, item.description, item.quantity, item.price, item.total]
+            'INSERT INTO invoice_items (invoice_id, service_id, description, quantity, price, total, booking_ids) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [id, item.service_id, item.description, item.quantity, item.price, item.total, bookingIds]
           );
         }
       }

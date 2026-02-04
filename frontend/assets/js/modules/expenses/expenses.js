@@ -1,9 +1,15 @@
 // Expenses module
 let expenses = [];
+let customCategories = JSON.parse(localStorage.getItem('expenseCustomCategories')) || [];
 
 export async function render(container) {
   try {
     expenses = await api.expenses.getAll();
+    
+    // Get all categories including custom ones
+    const allCategories = ['Rent', 'Utilities', 'Supplies', 'Salaries', 'Marketing', 'Maintenance'];
+    const uniqueCustomCategories = [...new Set(customCategories)];
+    const allCategoriesWithCustom = [...allCategories, ...uniqueCustomCategories, 'Other'];
     
     container.innerHTML = `
       <div class="table-container">
@@ -12,13 +18,7 @@ export async function render(container) {
           <div class="d-flex gap-2">
             <select id="filterCategory" class="form-control">
               <option value="">All Categories</option>
-              <option value="Rent">Rent</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Supplies">Supplies</option>
-              <option value="Salaries">Salaries</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Maintenance">Maintenance</option>
-              <option value="Other">Other</option>
+              ${allCategoriesWithCustom.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
             </select>
             <button id="addExpenseBtn" class="btn btn-primary">Add Expense</button>
           </div>
@@ -100,20 +100,26 @@ function attachEventListeners(container) {
 function showExpenseForm(expense = null) {
   const isEdit = !!expense;
   
+  // Get all categories including custom ones
+  const allCategories = ['Rent', 'Utilities', 'Supplies', 'Salaries', 'Marketing', 'Maintenance'];
+  const uniqueCustomCategories = [...new Set(customCategories)];
+  const allCategoriesWithCustom = [...allCategories, ...uniqueCustomCategories, 'Other'];
+  
   const formHTML = `
     <form id="expenseForm">
       <div class="form-group">
         <label for="expenseCategory">Category *</label>
-        <select id="expenseCategory" name="category" required>
+        <select id="expenseCategory" name="category" required onchange="handleCategoryChange()">
           <option value="">Select category</option>
-          <option value="Rent" ${expense?.category === 'Rent' ? 'selected' : ''}>Rent</option>
-          <option value="Utilities" ${expense?.category === 'Utilities' ? 'selected' : ''}>Utilities</option>
-          <option value="Supplies" ${expense?.category === 'Supplies' ? 'selected' : ''}>Supplies</option>
-          <option value="Salaries" ${expense?.category === 'Salaries' ? 'selected' : ''}>Salaries</option>
-          <option value="Marketing" ${expense?.category === 'Marketing' ? 'selected' : ''}>Marketing</option>
-          <option value="Maintenance" ${expense?.category === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
-          <option value="Other" ${expense?.category === 'Other' ? 'selected' : ''}>Other</option>
+          ${allCategoriesWithCustom.map(cat => `
+            <option value="${cat}" ${expense?.category === cat ? 'selected' : ''}>${cat}</option>
+          `).join('')}
         </select>
+      </div>
+      
+      <div class="form-group" id="customCategoryGroup" style="display: none;">
+        <label for="customCategoryName">Category Name *</label>
+        <input type="text" id="customCategoryName" name="custom_category" placeholder="Enter custom category name">
       </div>
       
       <div class="form-group">
@@ -153,12 +159,36 @@ function showExpenseForm(expense = null) {
   
   window.appUtils.showModal(isEdit ? 'Edit Expense' : 'Add Expense', formHTML);
   
+  // Check if "Other" was pre-selected (for editing)
+  const categorySelect = document.getElementById('expenseCategory');
+  if (categorySelect.value === 'Other') {
+    document.getElementById('customCategoryGroup').style.display = 'block';
+  }
+  
   // Attach form submit handler
   document.getElementById('expenseForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    let category = document.getElementById('expenseCategory').value;
+    
+    // If "Other" is selected, get the custom category name
+    if (category === 'Other') {
+      const customName = document.getElementById('customCategoryName').value.trim();
+      if (!customName) {
+        utils.showToast('Please enter a category name for "Other"', 'warning');
+        return;
+      }
+      category = customName;
+      
+      // Add to custom categories if not already there
+      if (!customCategories.includes(customName)) {
+        customCategories.push(customName);
+        localStorage.setItem('expenseCustomCategories', JSON.stringify(customCategories));
+      }
+    }
+    
     const formData = {
-      category: document.getElementById('expenseCategory').value,
+      category: category,
       amount: parseFloat(document.getElementById('expenseAmount').value),
       description: document.getElementById('expenseDescription').value,
       expense_date: document.getElementById('expenseDate').value,
@@ -183,6 +213,18 @@ function showExpenseForm(expense = null) {
     }
   });
 }
+
+window.handleCategoryChange = function() {
+  const categorySelect = document.getElementById('expenseCategory');
+  const customCategoryGroup = document.getElementById('customCategoryGroup');
+  
+  if (categorySelect.value === 'Other') {
+    customCategoryGroup.style.display = 'block';
+    document.getElementById('customCategoryName').focus();
+  } else {
+    customCategoryGroup.style.display = 'none';
+  }
+};
 
 // Export functions for global access
 window.expensesModule = {
