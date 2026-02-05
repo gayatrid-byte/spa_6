@@ -106,8 +106,6 @@ module.exports = {
       }
       if (req.body.end_date) updates.end_date = req.body.end_date;
       if (req.body.wallet_balance !== undefined) updates.wallet_balance = req.body.wallet_balance;
-      if (req.body.free_services_remaining !== undefined) updates.free_services_remaining = req.body.free_services_remaining;
-      if (req.body.guest_passes_remaining !== undefined) updates.guest_passes_remaining = req.body.guest_passes_remaining;
 
       const ok = await Membership.updateMembership(id, updates);
       if (!ok) return res.status(404).json({ error: 'Membership not found or no updates provided' });

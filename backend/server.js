@@ -34,6 +34,9 @@ app.use('/api/calendar', calendarRoutes);
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);

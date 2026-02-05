@@ -1,56 +1,136 @@
-// In-memory settings store shared across controllers/models
-// Note: In production, move this to a persistent DB table.
+const { pool } = require('../config/database');
 
-const store = {
-  salon: {
-    name: 'My Salon',
-    address: '',
-    phone: '',
-    email: '',
-    workingHours: {
-      monday: { open: '09:00', close: '18:00', closed: false },
-      tuesday: { open: '09:00', close: '18:00', closed: false },
-      wednesday: { open: '09:00', close: '18:00', closed: false },
-      thursday: { open: '09:00', close: '18:00', closed: false },
-      friday: { open: '09:00', close: '18:00', closed: false },
-      Saturday: { open: '09:00', close: '17:00', closed: false },
-      sunday: { open: '09:00', close: '17:00', closed: true }
+// In-memory cache for settings (updated from salon table)
+let cachedSettings = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function getSettings() {
+  // Check if cache is still valid
+  if (cachedSettings && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+    return cachedSettings;
+  }
+  
+  try {
+    const [rows] = await pool.query('SELECT * FROM salons WHERE id = 1');
+    
+    if (rows.length === 0) {
+      throw new Error('Default salon not found');
     }
-  },
-  billing: {
-    taxRate: 0,
-    currency: 'USD',
-    invoicePrefix: 'INV',
-    nextInvoiceNumber: 1001
+    
+    const salon = rows[0];
+    
+    // Convert database format to expected format
+    cachedSettings = {
+      salon: {
+        name: salon.name || 'Salon Management System',
+        address: salon.address || '',
+        phone: salon.phone || '',
+        email: salon.email || '',
+        gstin: salon.gstin || '',
+        logo: salon.logo_url || ''
+      },
+      billing: {
+        taxRate: parseFloat(salon.billing_tax_rate || 18),
+        currency: salon.billing_currency || 'INR',
+        invoicePrefix: salon.billing_invoice_prefix || 'INV',
+        nextInvoiceNumber: salon.billing_next_invoice_number || 1001
+      }
+    };
+    
+    cacheTimestamp = Date.now();
+    return cachedSettings;
+  } catch (error) {
+    console.error('Error loading settings from salon table:', error);
+    
+    // Return default settings if database fails
+    return {
+      salon: {
+        name: 'Salon Management System',
+        address: '',
+        phone: '',
+        email: '',
+        gstin: '',
+        logo: '',
+        workingHours: {
+          start: '09:00:00',
+          end: '21:00:00'
+        }
+      },
+      billing: {
+        taxRate: 18,
+        currency: 'INR',
+        invoicePrefix: 'INV',
+        nextInvoiceNumber: 1001,
+        currencySymbol: '₹'
+      }
+    };
   }
-};
-
-function getSettings() {
-  return store;
 }
 
-function updateSettings(partial) {
-  if (partial.salon) {
-    store.salon = { ...store.salon, ...partial.salon };
+async function updateSettings(partial) {
+  try {
+    const updateFields = [];
+    const values = [];
+    
+    if (partial.salon) {
+      if (partial.salon.name !== undefined) { updateFields.push('name = ?'); values.push(partial.salon.name); }
+      if (partial.salon.address !== undefined) { updateFields.push('address = ?'); values.push(partial.salon.address); }
+      if (partial.salon.phone !== undefined) { updateFields.push('phone = ?'); values.push(partial.salon.phone); }
+      if (partial.salon.email !== undefined) { updateFields.push('email = ?'); values.push(partial.salon.email); }
+      if (partial.salon.gstin !== undefined) { updateFields.push('gstin = ?'); values.push(partial.salon.gstin); }
+      if (partial.salon.logo !== undefined) { updateFields.push('logo_url = ?'); values.push(partial.salon.logo); }
+    }
+    
+    if (partial.billing) {
+      if (partial.billing.taxRate !== undefined) { updateFields.push('billing_tax_rate = ?'); values.push(partial.billing.taxRate); }
+      if (partial.billing.currency !== undefined) { updateFields.push('billing_currency = ?'); values.push(partial.billing.currency); }
+      if (partial.billing.invoicePrefix !== undefined) { updateFields.push('billing_invoice_prefix = ?'); values.push(partial.billing.invoicePrefix); }
+      if (partial.billing.nextInvoiceNumber !== undefined) { updateFields.push('billing_next_invoice_number = ?'); values.push(partial.billing.nextInvoiceNumber); }
+    }
+    
+    if (updateFields.length === 0) {
+      return await getSettings();
+    }
+    
+    await pool.query(
+      `UPDATE salons SET ${updateFields.join(', ')} WHERE id = 1`,
+      values
+    );
+    
+    // Invalidate cache
+    cachedSettings = null;
+    cacheTimestamp = null;
+    
+    return await getSettings();
+  } catch (error) {
+    console.error('Error updating settings in salon table:', error);
+    throw error;
   }
-  if (partial.billing) {
-    store.billing = { ...store.billing, ...partial.billing };
-  }
-  // Normalize currency
-  const validCurrencies = ['USD', 'INR', 'EUR', 'GBP'];
-  if (store.billing.currency && !validCurrencies.includes(store.billing.currency)) {
-    store.billing.currency = 'USD';
-  }
-  return store;
 }
 
-function generateInvoiceNumber() {
-  const prefix = store.billing.invoicePrefix || 'INV';
-  const seq = store.billing.nextInvoiceNumber || 1001;
-  const number = `${prefix}-${seq}`;
-  // Increment sequence for next time
-  store.billing.nextInvoiceNumber = seq + 1;
-  return number;
+async function generateInvoiceNumber() {
+  try {
+    // Get current invoice number and increment it
+    const [result] = await pool.query(
+      'UPDATE salons SET billing_next_invoice_number = billing_next_invoice_number + 1 WHERE id = 1'
+    );
+    
+    if (result.affectedRows === 0) {
+      throw new Error('Failed to increment invoice number');
+    }
+    
+    // Get the updated settings to get the new number and prefix
+    const settings = await getSettings();
+    const prefix = settings.billing.invoicePrefix || 'INV';
+    const number = settings.billing.nextInvoiceNumber;
+    
+    return `${prefix}-${number}`;
+  } catch (error) {
+    console.error('Error generating invoice number:', error);
+    // Fallback to timestamp-based number if database fails
+    return `INV-${Date.now()}`;
+  }
 }
 
 module.exports = {

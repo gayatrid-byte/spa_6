@@ -28,8 +28,8 @@ class User {
   static async create(userData) {
     try {
       const [result] = await pool.query(
-        'INSERT INTO users (email, password, name, role, salon_id, phone) VALUES (?, ?, ?, ?, ?, ?)',
-        [userData.email, userData.password, userData.name, userData.role, userData.salon_id, userData.phone]
+        'INSERT INTO users (email, password, name, role, salon_id) VALUES (?, ?, ?, ?, ?)',
+        [userData.email, userData.password, userData.name, userData.role, userData.salon_id]
       );
       return result.insertId;
     } catch (error) {
@@ -40,7 +40,7 @@ class User {
   static async getAll(salonId) {
     try {
       const [rows] = await pool.query(
-        'SELECT id, email, name, role, salon_id, phone, created_at FROM users WHERE salon_id = ?',
+        'SELECT id, email, name, role, salon_id, created_at FROM users WHERE salon_id = ?',
         [salonId]
       );
       return rows;
@@ -52,8 +52,8 @@ class User {
   static async update(id, userData) {
     try {
       const [result] = await pool.query(
-        'UPDATE users SET name = ?, phone = ?, role = ? WHERE id = ?',
-        [userData.name, userData.phone, userData.role, id]
+        'UPDATE users SET name = ?, role = ? WHERE id = ?',
+        [userData.name, userData.role, id]
       );
       return result.affectedRows > 0;
     } catch (error) {

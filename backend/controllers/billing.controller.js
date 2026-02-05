@@ -146,35 +146,24 @@ async function getAutoInvoiceItems(req, res) {
 
     const subtotal = items.reduce((sum, i) => sum + (parseFloat(i.total) || 0), 0);
 
-    // Membership discount calculation (free services + percent + wallet) without persisting wallet/free changes
+    // Membership discount calculation (percentage + wallet) without persisting wallet changes
     let planDiscount = 0;
-    let freeDeduction = 0;
     let walletApplied = 0;
 
     try {
       const membership = await Membership.getUserMembership(customer_id);
       if (membership && (membership.status === 'active' || membership.status === 'pending')) {
         const percent = parseFloat(membership.discount_percentage || 0);
-        const pricesSorted = items
-          .map(i => parseFloat(i.price) || 0)
-          .filter(p => p > 0)
-          .sort((a, b) => b - a);
-        const freeRemaining = parseInt(membership.free_services_remaining || 0) || 0;
-        const freeUsed = Math.min(freeRemaining, pricesSorted.length);
-        if (freeUsed > 0) {
-          freeDeduction = pricesSorted.slice(0, freeUsed).reduce((sum, p) => sum + p, 0);
-        }
-        const subtotalAfterFree = Math.max(0, subtotal - freeDeduction);
-        planDiscount = percent > 0 ? (subtotalAfterFree * (percent / 100)) : 0;
+        planDiscount = percent > 0 ? (subtotal * (percent / 100)) : 0;
         const walletBalance = parseFloat(membership.wallet_balance || 0);
-        const remainingAfterDiscounts = Math.max(0, subtotalAfterFree - planDiscount);
+        const remainingAfterDiscounts = Math.max(0, subtotal - planDiscount);
         walletApplied = Math.min(walletBalance, remainingAfterDiscounts);
       }
     } catch (_) {}
 
     const settings = getSettings();
     const taxRate = parseFloat(settings.billing?.taxRate || 0);
-    const autoDiscount = parseFloat((planDiscount + freeDeduction + walletApplied).toFixed(2));
+    const autoDiscount = parseFloat((planDiscount + walletApplied).toFixed(2));
     const tax = parseFloat(((subtotal - autoDiscount) * (taxRate / 100)).toFixed(2));
     const total = Math.max(0, parseFloat((subtotal - autoDiscount + tax).toFixed(2)));
 
@@ -185,7 +174,6 @@ async function getAutoInvoiceItems(req, res) {
       tax,
       total,
       breakdown: {
-        freeDeduction,
         planDiscount,
         walletApplied,
         taxRate

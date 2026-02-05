@@ -311,20 +311,30 @@ export async function render(container) {
           <input type="email" id="salonEmail" name="email" value="${savedSettings.salon?.email || ''}">
         </div>
         
-        <div class="d-flex gap-2 mt-2">
-          <div class="form-group" style="flex: 1">
-            <label for="taxRate">Tax Rate (%)</label>
-            <input type="number" id="taxRate" name="taxRate" value="${savedSettings.billing?.taxRate || 0}" min="0" step="0.1">
+        <div class="form-group">
+          <label for="salonGstin">GSTIN Number</label>
+          <input type="text" id="salonGstin" name="gstin" value="${savedSettings.salon?.gstin || ''}" 
+                 placeholder="e.g. 27AAAAA0000A1Z5" pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}">
+          <small class="text-muted">15-character alphanumeric code for tax identification</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="companyLogo">Company Logo</label>
+          <div class="logo-upload-container">
+            <input type="file" id="companyLogo" name="logo" accept="image/*" style="display: none;">
+            <div class="logo-preview" id="logoPreview">
+              ${savedSettings.salon?.logo ? `<img src="${savedSettings.salon.logo}" alt="Company Logo" style="max-width: 150px; max-height: 100px; object-fit: contain;">` : '<div class="no-logo-placeholder">No logo uploaded</div>'}
+            </div>
+            <div class="logo-actions mt-2">
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('companyLogo').click()">Choose Logo</button>
+              ${savedSettings.salon?.logo ? '<button type="button" class="btn btn-sm btn-danger" id="removeLogo">Remove Logo</button>' : ''}
+            </div>
           </div>
-          <div class="form-group" style="flex: 1">
-            <label for="currency">Currency</label>
-            <select id="currency" name="currency">
-              <option value="USD" ${(savedSettings.billing?.currency === 'USD' || !savedSettings.billing?.currency) ? 'selected' : ''}>USD ($)</option>
-              <option value="INR" ${savedSettings.billing?.currency === 'INR' ? 'selected' : ''}>Indian Rupee ($)</option>
-              <option value="EUR" ${savedSettings.billing?.currency === 'EUR' ? 'selected' : ''}>Euro (€)</option>
-              <option value="GBP" ${savedSettings.billing?.currency === 'GBP' ? 'selected' : ''}>British Pound (£)</option>
-            </select>
-          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="taxRate">Tax Rate (%)</label>
+          <input type="number" id="taxRate" name="taxRate" value="${savedSettings.billing?.taxRate || 18}" min="0" step="0.1">
         </div>
         
         <div class="form-group">
@@ -386,7 +396,6 @@ function renderUsersTable(usersList) {
           <th>Name</th>
           <th>Email</th>
           <th>Role</th>
-          <th>Phone</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -396,7 +405,6 @@ function renderUsersTable(usersList) {
             <td>${user.name}</td>
             <td>${user.email}</td>
             <td><span class="badge badge-info">${user.role}</span></td>
-            <td>${user.phone || 'N/A'}</td>
             <td>
               <button class="btn btn-sm btn-outline" onclick="window.settingsModule.editUser(${user.id})">Edit</button>
               <button class="btn btn-sm btn-danger" onclick="window.settingsModule.deleteUser(${user.id})">Delete</button>
@@ -409,6 +417,91 @@ function renderUsersTable(usersList) {
 }
 
 function attachEventListeners(container) {
+  // Logo file upload handling
+  const logoInput = container.querySelector('#companyLogo');
+  const logoPreview = container.querySelector('#logoPreview');
+  const removeLogo = container.querySelector('#removeLogo');
+  
+  if (logoInput) {
+    logoInput.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          utils.showToast('Please select an image file', 'error');
+          return;
+        }
+        
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+          utils.showToast('Image file size should be less than 2MB', 'error');
+          return;
+        }
+        
+        try {
+          // Upload the logo file
+          const formData = new FormData();
+          formData.append('logo', file);
+          
+          // Use api.request directly for file uploads to avoid JSON.stringify
+          const uploadResult = await api.request('/settings/upload-logo', {
+            method: 'POST',
+            body: formData
+          });
+          
+          // Store the uploaded file path
+          window.currentLogoData = uploadResult.logoPath;
+          
+          // Update preview
+          logoPreview.innerHTML = `<img src="${uploadResult.logoUrl}" alt="Company Logo" style="max-width: 150px; max-height: 100px; object-fit: contain;">`;
+          
+          // Add remove button if not exists
+          const logoActions = container.querySelector('.logo-actions');
+          if (logoActions && !logoActions.querySelector('#removeLogo')) {
+            logoActions.innerHTML += '<button type="button" class="btn btn-sm btn-danger" id="removeLogo">Remove Logo</button>';
+            // Re-attach remove event
+            container.querySelector('#removeLogo').addEventListener('click', removeLogo);
+          }
+          
+          // Update the main app logo
+          const appLogo = document.getElementById('appLogo');
+          if (appLogo) {
+            // Get current salon name from the form
+            const salonName = document.getElementById('salonName')?.value || 'Salon Manager';
+            appLogo.innerHTML = `
+              <img src="${uploadResult.logoUrl}" alt="Company Logo" style="max-height: 40px; max-width: 200px; object-fit: contain; display: block; margin: 0 auto;">
+              <h3 style="margin: 5px 0 0 0; text-align: center; font-size: 14px; font-weight: 500;">${salonName}</h3>
+            `;
+          }
+          
+          utils.showToast('Logo uploaded successfully', 'success');
+        } catch (error) {
+          console.error('Logo upload error:', error);
+          utils.showToast('Failed to upload logo: ' + error.message, 'error');
+        }
+      }
+    });
+  }
+  
+  if (removeLogo) {
+    removeLogo.addEventListener('click', function() {
+      if (confirm('Are you sure you want to remove the logo?')) {
+        window.currentLogoData = '';
+        logoPreview.innerHTML = '<div class="no-logo-placeholder">No logo uploaded</div>';
+        
+        // Clear the main app logo and restore salon name
+        const appLogo = document.getElementById('appLogo');
+        if (appLogo) {
+          const salonName = document.getElementById('salonName')?.value || 'Salon Manager';
+          appLogo.innerHTML = `<h2>${salonName}</h2>`;
+        }
+        
+        this.remove();
+        utils.showToast('Logo removed', 'info');
+      }
+    });
+  }
+
   // Save salon settings
   const settingsForm = container.querySelector('#salonSettingsForm');
   if (settingsForm) {
@@ -420,11 +513,13 @@ function attachEventListeners(container) {
           name: document.getElementById('salonName').value,
           address: document.getElementById('salonAddress').value,
           phone: document.getElementById('salonPhone').value,
-          email: document.getElementById('salonEmail').value
+          email: document.getElementById('salonEmail').value,
+          gstin: document.getElementById('salonGstin').value,
+          logoUrl: window.currentLogoData || savedSettings.salon?.logoUrl || ''
         },
         billing: {
-          taxRate: parseFloat(document.getElementById('taxRate').value) || 0,
-          currency: document.getElementById('currency').value,
+          taxRate: parseFloat(document.getElementById('taxRate').value) || 18,
+          currency: 'INR',
           invoicePrefix: document.getElementById('invoicePrefix').value,
           nextInvoiceNumber: parseInt(document.getElementById('nextInvoiceNumber').value) || 1001
         }
@@ -477,11 +572,6 @@ function showUserForm(user = null) {
         </select>
       </div>
       
-      <div class="form-group">
-        <label for="userPhone">Phone</label>
-        <input type="tel" id="userPhone" name="phone" value="${user?.phone || ''}">
-      </div>
-      
       <button type="submit" class="btn btn-primary">${isEdit ? 'Update' : 'Create'} User</button>
     </form>
   `;
@@ -495,8 +585,7 @@ function showUserForm(user = null) {
     const formData = {
       name: document.getElementById('userName').value,
       email: document.getElementById('userEmail').value,
-      role: document.getElementById('userRole').value,
-      phone: document.getElementById('userPhone').value
+      role: document.getElementById('userRole').value
     };
     
     // Add password only if provided or creating new user

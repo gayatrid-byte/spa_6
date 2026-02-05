@@ -2934,3 +2934,65 @@ tbody tr:hover {
     max-width: 100%;
   }
 }
+
+/* ======================================================
+   SETTINGS - LOGO UPLOAD STYLES
+   ====================================================== */
+
+.logo-upload-container {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.logo-upload-container:hover {
+  border-color: var(--primary-teal);
+  background-color: rgba(0, 128, 128, 0.05);
+}
+
+.logo-preview {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.logo-preview img {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.no-logo-placeholder {
+  color: var(--text-light);
+  font-style: italic;
+  padding: 40px 0;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--bg-light);
+}
+
+.logo-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Form enhancements for settings */
+.form-group small.text-muted {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.85em;
+  color: var(--text-light);
+}
+
+.form-group input[pattern]:invalid {
+  border-color: var(--error-color);
+}
+
+.form-group input[pattern]:valid {
+  border-color: var(--success-color);
+}

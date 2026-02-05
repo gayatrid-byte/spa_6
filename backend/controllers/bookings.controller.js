@@ -76,10 +76,8 @@ async function createBooking(req, res) {
       wallet_applied: frontend_wallet_applied = 0,
       notes,
       membership_apply = true,
-      apply_free = true,
       apply_percent = true,
       apply_wallet = true,
-      free_services_used = 0,
       subtotal_preview,
       plan_deduction_preview,
       wallet_applied_preview,
@@ -120,9 +118,7 @@ async function createBooking(req, res) {
     // Membership/Wallet calculations
     const manualDiscount = parseFloat(discount_amount) || 0;
     let planDiscount = 0;
-    let freeDeduction = 0;
     let walletApplied = 0;
-    let freeUsed = 0;
 
     // Calculate end time
     const endTime = await calculateEndTime(start_time, totalDuration);
@@ -149,37 +145,21 @@ async function createBooking(req, res) {
           id: membership.id, 
           wallet_balance: membership.wallet_balance, 
           status: membership.status,
-          discount_percentage: membership.discount_percentage,
-          free_services_remaining: membership.free_services_remaining
+          discount_percentage: membership.discount_percentage
         } : null);
         
         if (membership && (membership.status === 'active' || membership.status === 'pending')) {
           const percent = parseFloat(membership.discount_percentage || 0);
-          // Free services: apply to MOST expensive items first, limited by requested count when provided
-          const pricesSorted = items
-            .map(i => parseFloat(i.price) || 0)
-            .filter(p => p > 0)
-            .sort((a, b) => b - a);
-          const requestedFree = parseInt(free_services_used || 0) || 0;
-          const freeRemaining = parseInt(membership.free_services_remaining || 0) || 0;
-          // Apply only the number of freebies explicitly requested, capped by remaining and item count
-          freeUsed = apply_free ? Math.min(requestedFree, freeRemaining, pricesSorted.length) : 0;
-          if (freeUsed > 0) {
-            freeDeduction = pricesSorted.slice(0, freeUsed).reduce((sum, p) => sum + p, 0);
-          }
-          // Percentage discount applies on remaining subtotal after free deduction
-          const subtotalAfterFree = Math.max(0, subtotal - freeDeduction);
-          planDiscount = (apply_percent && percent > 0) ? (subtotalAfterFree * (percent / 100)) : 0;
+          // Percentage discount applies on the subtotal
+          planDiscount = (apply_percent && percent > 0) ? (subtotal * (percent / 100)) : 0;
           
           console.log('[Bookings] Discount calculations:', {
             subtotal,
-            freeDeduction,
-            subtotalAfterFree,
             planDiscount,
             manualDiscount
           });
           
-          // Wallet covers remaining total after manual + plan + free
+          // Wallet covers remaining total after manual + plan
           const walletBalance = parseFloat(membership.wallet_balance || 0);
           const remainingAfterDiscounts = Math.max(0, subtotalAfterFree - planDiscount - manualDiscount);
           
@@ -204,14 +184,12 @@ async function createBooking(req, res) {
           }
 
           // Update membership balances only if we actually applied something
-          if (walletApplied > 0 || freeUsed > 0) {
+          if (walletApplied > 0) {
             const newWallet = Math.max(0, walletBalance - walletApplied);
-            const newFreeRemaining = Math.max(0, (membership.free_services_remaining || 0) - freeUsed);
             await Membership.updateMembership(membership.id, {
-              wallet_balance: newWallet,
-              free_services_remaining: newFreeRemaining
+              wallet_balance: newWallet
             });
-            console.log('[Bookings] Updated membership balances:', { newWallet, newFreeRemaining });
+            console.log('[Bookings] Updated membership wallet balance:', { newWallet });
           }
         } else {
           console.log('[Bookings] Membership not active or not found');
@@ -239,7 +217,7 @@ async function createBooking(req, res) {
       taxAmount = subtotal * 0.05;
     }
 
-    const totalBeforeWallet = Math.max(0, subtotal + taxAmount - manualDiscount - planDiscount - freeDeduction);
+    const totalBeforeWallet = Math.max(0, subtotal + taxAmount - manualDiscount - planDiscount);
     const total = Math.max(0, totalBeforeWallet - walletApplied);
 
     console.log('[Bookings] Final calculations:', {
@@ -247,7 +225,6 @@ async function createBooking(req, res) {
       taxAmount,
       manualDiscount,
       planDiscount,
-      freeDeduction,
       walletApplied,
       totalBeforeWallet,
       total
@@ -268,7 +245,7 @@ async function createBooking(req, res) {
       total_duration: totalDuration,
       status: 'confirmed',
       subtotal_amount: persistSubtotal,
-      discount_amount: parseFloat((manualDiscount + planDiscount + freeDeduction).toFixed(2)),
+      discount_amount: parseFloat((manualDiscount + planDiscount).toFixed(2)),
       tax_amount: parseFloat(taxAmount.toFixed(2)),
       wallet_applied: parseFloat(walletApplied.toFixed(2)),
       total_amount: persistTotal,
@@ -289,7 +266,7 @@ async function createBooking(req, res) {
             previewSubtotal, subtotal, diffSubtotal,
             previewTotal, total, diffTotal,
             plan_deduction_preview, wallet_applied_preview,
-            serverPlanDiscount: planDiscount, serverWalletApplied: walletApplied, freeUsed
+            serverPlanDiscount: planDiscount, serverWalletApplied: walletApplied
           });
         }
       }
@@ -302,7 +279,6 @@ async function createBooking(req, res) {
           subtotal,
           manualDiscount,
           planDiscount,
-          freeDeduction,
           walletApplied,
           items: items.map(i => ({ service_id: i.service_id, price: i.price, duration: i.duration_minutes }))
         });

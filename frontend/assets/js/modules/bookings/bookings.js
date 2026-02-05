@@ -115,11 +115,8 @@ async function handleBookingFormSubmit(e) {
   console.log('[Bookings] initial bookingData', bookingData);
   // Membership application flags
   bookingData.membership_apply = (e.target.dataset.membershipApply === 'true');
-  bookingData.apply_free = (e.target.dataset.applyFree === 'true');
   bookingData.apply_percent = (e.target.dataset.applyPercent === 'true');
   bookingData.apply_wallet = (e.target.dataset.applyWallet === 'true');
-  // Free services selected count
-  bookingData.free_services_used = parseInt(e.target.dataset.freeCount || '0') || 0;
   // Preview totals from UI (server may recompute but we provide for consistency)
   bookingData.subtotal_preview = parseFloat(e.target.dataset.subtotal || '0') || 0;
   bookingData.plan_deduction_preview = parseFloat(e.target.dataset.planDeduction || '0') || 0;
@@ -1090,18 +1087,6 @@ async function loadSubCategoriesForItem(categoryId, index) {
   // Recompute summary after subcategories load
   calculateSummary();
 
-  const freeCountEl = document.getElementById('freeCount');
-  if (freeCountEl) {
-    freeCountEl.addEventListener('change', () => {
-      // Clamp to available count when known
-      const max = parseInt(freeCountEl.max || '0') || 0;
-      let val = parseInt(freeCountEl.value || '0') || 0;
-      if (max > 0 && val > max) { freeCountEl.value = String(max); }
-      if (val < 0) { freeCountEl.value = '0'; }
-      calculateSummary();
-    });
-  }
-
   calculateSummary();
 }
 
@@ -1395,13 +1380,6 @@ async function fetchCustomerMembership(customerId) {
     
     // Store membership data
     window.bookingMembership = membership || null;
-    
-    // Set available free count hint and max
-    const freeCountEl = document.getElementById('freeCount');
-    const hintEl = document.getElementById('freeCountHint');
-    const freeAvail = parseInt(membership?.free_services_remaining || 0) || 0;
-    if (freeCountEl) { freeCountEl.max = String(freeAvail); }
-    if (hintEl) { hintEl.textContent = freeAvail > 0 ? `(Available: ${freeAvail})` : '(No free services)'; }
     
     // Recalculate summary to reflect membership and wallet
     calculateSummary();

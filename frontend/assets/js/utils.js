@@ -122,10 +122,10 @@ const utils = {
   },
   
   // Format currency with support for multiple currencies
-  formatCurrency(amount, currency = 'USD') {
+  formatCurrency(amount, currency = 'INR') {
     const currencySymbols = {
-      'USD': '$',
-      'INR': '$',
+      'USD': '₹',
+      'INR': '₹',
       'EUR': '€',
       'GBP': '£'
     };
@@ -150,14 +150,14 @@ const utils = {
   },
   
   // Get currency symbol
-  getCurrencySymbol(currency = 'USD') {
+  getCurrencySymbol(currency = 'INR') {
     const symbols = {
-      'USD': '$',
-      'INR': '$',
+      'USD': '₹',
+      'INR': '₹',
       'EUR': '€',
       'GBP': '£'
     };
-    return symbols[currency] || '$';
+    return symbols[currency] || '₹';
   },
   
   // Get today's date in YYYY-MM-DD format

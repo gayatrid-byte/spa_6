@@ -58,7 +58,7 @@ function renderInvoicesTable(invoiceList) {
     return '<p class="text-center">No invoices found</p>';
   }
 
-  const currency = salonSettings.billing?.currency || "USD";
+  const currency = salonSettings.billing?.currency || "INR";
 
   return `
     <table>
@@ -351,7 +351,7 @@ async function showInvoiceForm(invoice = null) {
         dateTo: date,
       });
 
-      const currency = salonSettings.billing?.currency || "USD";
+      const currency = salonSettings.billing?.currency || "INR";
       
       // Filter out bookings that already have invoices
       let availableBookings = [];
@@ -510,7 +510,7 @@ async function showInvoiceForm(invoice = null) {
   };
 
   window.updateInvoiceCalculations = function () {
-    const currency = salonSettings.billing?.currency || "USD";
+    const currency = salonSettings.billing?.currency || "INR";
     let extraItemsTotal = 0;
     let extraItemsTax = 0;
     
@@ -570,7 +570,7 @@ async function showInvoiceForm(invoice = null) {
     .getElementById("invoiceForm")
     .addEventListener("submit", async function (e) {
       e.preventDefault();
-      const currency = salonSettings.billing?.currency || "USD";
+      const currency = salonSettings.billing?.currency || "INR";
 
       // Get selected payment methods
       const paymentMethods = [];
@@ -718,7 +718,7 @@ window.billingModule = {
   viewInvoice: async function (id) {
     try {
       const invoice = await api.billing.getById(id);
-      const currency = salonSettings.billing?.currency || "USD";
+      const currency = salonSettings.billing?.currency || "INR";
 
       // Fallback: fetch customer if not populated
       if (!invoice.customer_name && invoice.customer_id) {
@@ -780,7 +780,7 @@ window.billingModule = {
   printInvoice: async function (id) {
     try {
       const invoice = await api.billing.getById(id);
-      const currency = salonSettings.billing?.currency || "USD";
+      const currency = salonSettings.billing?.currency || "INR";
       const currencySymbol = utils.getCurrencySymbol(currency);
 
       // Fallback: fetch customer if not populated
@@ -802,10 +802,11 @@ window.billingModule = {
       `).join('');
 
       const printHTML = `
-        <div class="invoice-header">
+        <div class="invoice-header" style="text-align: center;">
           <h2>${salonSettings.salon?.name || 'Salon Management System'}</h2>
           <p>${salonSettings.salon?.address || ''}</p>
           <p>Phone: ${salonSettings.salon?.phone || ''} | Email: ${salonSettings.salon?.email || ''}</p>
+          ${salonSettings.salon?.gstin ? `<p><strong>GSTIN:</strong> ${salonSettings.salon.gstin}</p>` : ''}
           <hr>
           <h3>INVOICE</h3>
         </div>
@@ -842,7 +843,7 @@ window.billingModule = {
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="3" class="text-right"><strong>Subtotal:</strong></td>
+              <td colspan="3" class="text-right"><strong>SUBTOTAL:</strong></td>
               <td class="text-right">${utils.formatCurrency(invoice.subtotal, currency)}</td>
             </tr>
             <tr>
@@ -854,7 +855,7 @@ window.billingModule = {
               <td class="text-right">${utils.formatCurrency(invoice.discount, currency)}</td>
             </tr>
             <tr class="total-row" style="border-top: 2px solid #000;">
-              <td colspan="3" class="text-right"><strong>Grand Total:</strong></td>
+              <td colspan="3" class="text-right"><strong>Total:</strong></td>
               <td class="text-right">${utils.formatCurrency(invoice.total, currency)}</td>
             </tr>
           </tfoot>

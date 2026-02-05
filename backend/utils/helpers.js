@@ -3,10 +3,13 @@ const helpers = {
     return new Date(date).toISOString().split('T')[0];
   },
   
-  formatCurrency: (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
+  formatCurrency: (amount, currency = 'INR') => {
+    // Use Indian Rupee formatting for all currencies to show ₹ symbol
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: currency
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount);
   },
   

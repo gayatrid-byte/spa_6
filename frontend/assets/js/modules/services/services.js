@@ -82,81 +82,47 @@ const apiHelper = {
   
   async getCombosWithFallback() {
     try {
-      // First try serviceCombos API
-      return await api.serviceCombos.getAll();
+      // Try services.getCombos directly
+      return await api.services.getCombos();
     } catch (error) {
-      console.log('serviceCombos API not available, trying services.getCombos:', error);
-      try {
-        // Fallback to services.getCombos
-        return await api.services.getCombos();
-      } catch (error2) {
-        console.log('Both combo APIs failed:', error2);
-        return [];
-      }
+      console.log('Combos API not available:', error);
+      return [];
     }
   },
   
   async createComboWithFallback(data) {
     try {
-      // First try serviceCombos.create
-      return await api.serviceCombos.create(data);
+      return await api.services.createCombo(data);
     } catch (error) {
-      console.log('serviceCombos.create not available, trying services.createCombo:', error);
-      try {
-        // Fallback to services.createCombo
-        return await api.services.createCombo(data);
-      } catch (error2) {
-        console.log('Both combo create APIs failed:', error2);
-        throw new Error('Combo API not available: ' + error2.message);
-      }
+      console.log('Combo create API not available:', error);
+      throw new Error('Combo API not available: ' + error.message);
     }
   },
   
   async updateComboWithFallback(comboId, data) {
     try {
-      // First try serviceCombos.update
-      return await api.serviceCombos.update(comboId, data);
+      return await api.services.updateCombo(comboId, data);
     } catch (error) {
-      console.log('serviceCombos.update not available, trying services.updateCombo:', error);
-      try {
-        // Fallback to services.updateCombo
-        return await api.services.updateCombo(comboId, data);
-      } catch (error2) {
-        console.log('Both combo update APIs failed:', error2);
-        throw new Error('Combo API not available: ' + error2.message);
-      }
+      console.log('Combo update API not available:', error);
+      throw new Error('Combo API not available: ' + error.message);
     }
   },
   
   async deleteComboWithFallback(comboId) {
     try {
-      // First try serviceCombos.delete
-      return await api.serviceCombos.delete(comboId);
+      return await api.services.deleteCombo(comboId);
     } catch (error) {
-      console.log('serviceCombos.delete not available, trying services.deleteCombo:', error);
-      try {
-        // Fallback to services.deleteCombo
-        return await api.services.deleteCombo(comboId);
-      } catch (error2) {
-        console.log('Both combo delete APIs failed:', error2);
-        throw new Error('Combo API not available: ' + error2.message);
-      }
+      console.log('Combo delete API not available:', error);
+      throw new Error('Combo API not available: ' + error.message);
     }
   },
   
   async getComboByIdWithFallback(comboId) {
     try {
-      // First try serviceCombos.getById
-      return await api.serviceCombos.getById(comboId);
+      return await api.services.getComboById(comboId);
     } catch (error) {
-      console.log('serviceCombos.getById not available, trying services.getComboById:', error);
-      try {
-        // Fallback to services.getComboById
-        return await api.services.getComboById(comboId);
-      } catch (error2) {
-        console.log('Both combo getById APIs failed:', error2);
-        throw new Error('Combo API not available: ' + error2.message);
-      }
+      console.log('Combo getById API not available:', error);
+      throw new Error('Combo API not available: ' + error.message);
     }
   }
 };
@@ -185,6 +151,8 @@ export async function render(container) {
     
     try {
       servicesData = await api.services.getAll();
+      console.log('Services loaded:', servicesData);
+      console.log('Sample service:', servicesData[0]);
     } catch (error) {
       console.error('Error loading services:', error);
       utils.showToast('Failed to load services', 'error');
@@ -279,8 +247,8 @@ export async function render(container) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function renderServicesView() {
-  const activeServices = services.filter(s => s.is_active !== false);
-  const inactiveServices = services.filter(s => s.is_active === false);
+  const activeServices = services.filter(s => s.is_active == 1 || s.is_active === true);
+  const inactiveServices = services.filter(s => s.is_active == 0 || s.is_active === false);
   
   return `
     <div class="table-container">
@@ -371,6 +339,13 @@ function renderServicesTable(servicesList) {
           // Get rooms for this service
           const serviceRooms = service.room_ids ? 
             rooms.filter(r => service.room_ids.includes(r.id)) : [];
+          
+          console.log(`Service ${service.name}:`, {
+            room_ids: service.room_ids,
+            rooms: service.rooms,
+            serviceRooms: serviceRooms,
+            availableRooms: rooms
+          });
           
           return `
             <tr>
@@ -724,8 +699,8 @@ function renderRoomsTable(roomsList) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function renderCombosView() {
-  const activeCombos = serviceCombos.filter(c => c.is_active !== false);
-  const inactiveCombos = serviceCombos.filter(c => c.is_active === false);
+  const activeCombos = serviceCombos.filter(c => c.is_active == 1 || c.is_active === true);
+  const inactiveCombos = serviceCombos.filter(c => c.is_active == 0 || c.is_active === false);
   
   return `
     <div class="table-container">
@@ -2178,7 +2153,7 @@ async function showServiceForm(service = null) {
   }
   
   const formHTML = `
-    <div class="service-form-container" style="max-width: 800px;">
+    <div class="service-form-container" style="max-width: 700px;">
       <h4 class="mb-3"><i class="fas fa-spa"></i> ${isEdit ? 'Edit Service' : '➕ ADD SERVICE'}</h4>
       
       <form id="serviceForm">
@@ -2198,31 +2173,17 @@ async function showServiceForm(service = null) {
               <div class="form-group">
                 <label for="serviceCategory"><i class="fas fa-tags"></i> Category *</label>
                 <select id="serviceCategory" class="form-control" required>
-                  <option value="">Select Sub-Category</option>
+                  <option value="">Select Category</option>
                   ${categoryOptions}
                 </select>
-                <small class="form-text text-muted">Services are linked to sub-categories</small>
               </div>
             </div>
           </div>
           
-          <div class="row">
-            <div class="col-md-6">
-              <div class="form-group">
-                <label for="shortDescription"><i class="fas fa-align-left"></i> Short Description</label>
-                <input type="text" id="shortDescription" class="form-control" 
-                  value="${service?.short_description || ''}"
-                  placeholder="Brief description for listings">
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label for="serviceCode"><i class="fas fa-barcode"></i> Service Code</label>
-                <input type="text" id="serviceCode" class="form-control" 
-                  value="${service?.code || ''}"
-                  placeholder="Unique code (optional)">
-              </div>
-            </div>
+          <div class="form-group">
+            <label for="shortDescription"><i class="fas fa-align-left"></i> Description</label>
+            <textarea id="shortDescription" class="form-control" rows="2"
+              placeholder="Brief service description">${service?.short_description || service?.description || ''}</textarea>
           </div>
         </div>
         
@@ -2230,28 +2191,20 @@ async function showServiceForm(service = null) {
         <div class="form-section">
           <h5><i class="fas fa-clock"></i> Duration & Pricing</h5>
           <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-6">
               <div class="form-group">
                 <label for="duration"><i class="fas fa-hourglass-half"></i> Duration (minutes) *</label>
                 <input type="number" id="duration" class="form-control" 
                   value="${service?.duration_minutes || service?.duration || 60}" min="5" max="480" required
-                  placeholder="Service duration in minutes">
+                  placeholder="Service duration">
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <div class="form-group">
                 <label for="basePrice"><i class="fas fa-rupee-sign"></i> Base Price *</label>
                 <input type="number" id="basePrice" class="form-control" 
                   value="${service?.base_price || service?.price || 0}" min="0" step="0.01" required
-                  placeholder="Base price">
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label for="taxRate"><i class="fas fa-percentage"></i> Tax Rate (%)</label>
-                <input type="number" id="taxRate" class="form-control" 
-                  value="${service?.tax_rate || 0}" min="0" max="100" step="0.01"
-                  placeholder="Tax percentage">
+                  placeholder="Service price">
               </div>
             </div>
           </div>
@@ -2260,11 +2213,11 @@ async function showServiceForm(service = null) {
         <!-- Room Assignment -->
         <div class="form-section">
           <h5><i class="fas fa-door-closed"></i> Room Assignment</h5>
-          <p class="text-muted">Select rooms where this service can be performed</p>
+          <p class="text-muted">Select rooms where this service can be performed:</p>
           
           <div class="rooms-selection">
-            <div class="form-check-group">
-              ${freshRooms.map(room => `
+            <div class="form-check-group" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+              ${freshRooms.length > 0 ? freshRooms.map(room => `
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" 
                     id="room_${room.id}" 
@@ -2277,43 +2230,12 @@ async function showServiceForm(service = null) {
                     ${room.is_active === false ? '<span class="badge badge-danger ml-2">Inactive</span>' : ''}
                   </label>
                 </div>
-              `).join('')}
+              `).join('') : '<p class="text-muted">No rooms available. Please create rooms first.</p>'}
             </div>
           </div>
         </div>
         
-        <!-- Additional Information -->
-        <div class="form-section">
-          <h5><i class="fas fa-info-circle"></i> Additional Information</h5>
-          <div class="row">
-            <div class="col-md-12">
-              <div class="form-group">
-                <label for="fullDescription"><i class="fas fa-align-left"></i> Full Description</label>
-                <textarea id="fullDescription" class="form-control" rows="4" 
-                  placeholder="Detailed description of the service">${service?.full_description || service?.description || ''}</textarea>
-              </div>
-            </div>
-          </div>
-          
-          <div class="row">
-            <div class="col-md-6">
-              <div class="form-group">
-                <label for="preparationNotes"><i class="fas fa-clipboard-list"></i> Preparation Notes</label>
-                <textarea id="preparationNotes" class="form-control" rows="3" 
-                  placeholder="Any preparation required by client">${service?.preparation_notes || ''}</textarea>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label for="aftercareNotes"><i class="fas fa-heart"></i> Aftercare Notes</label>
-                <textarea id="aftercareNotes" class="form-control" rows="3" 
-                  placeholder="Aftercare instructions">${service?.aftercare_notes || ''}</textarea>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Status -->
+        <!-- Status & Settings -->
         <div class="form-section">
           <div class="row">
             <div class="col-md-6">
@@ -2323,9 +2245,6 @@ async function showServiceForm(service = null) {
                 <label class="form-check-label" for="serviceActive">
                   <i class="fas fa-toggle-on"></i> Active Service
                 </label>
-                <div>
-                  <small class="form-text text-muted">Inactive services won't be available for booking</small>
-                </div>
               </div>
             </div>
             <div class="col-md-6">
@@ -2333,19 +2252,10 @@ async function showServiceForm(service = null) {
                 <label for="displayOrder"><i class="fas fa-sort-numeric-down"></i> Display Order</label>
                 <input type="number" id="displayOrder" class="form-control" 
                   value="${service?.display_order || 0}" min="0"
-                  placeholder="Lower numbers show first">
+                  placeholder="Sort order">
               </div>
             </div>
           </div>
-        </div>
-        
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i> <strong>Notes:</strong>
-          <ul class="mb-0 mt-2">
-            <li>Services must be linked to a sub-category</li>
-            <li>Multiple rooms can be selected for one service</li>
-            <li>Tax rate is applied on top of base price</li>
-          </ul>
         </div>
         
         <div class="form-actions mt-4">
@@ -2372,13 +2282,8 @@ async function showServiceForm(service = null) {
         name: document.getElementById('serviceName').value.trim(),
         category_id: document.getElementById('serviceCategory').value,
         short_description: document.getElementById('shortDescription').value.trim() || null,
-        code: document.getElementById('serviceCode').value.trim() || null,
         duration_minutes: document.getElementById('duration').value,
         base_price: document.getElementById('basePrice').value,
-        tax_rate: document.getElementById('taxRate').value || 0,
-        full_description: document.getElementById('fullDescription').value.trim() || null,
-        preparation_notes: document.getElementById('preparationNotes').value.trim() || null,
-        aftercare_notes: document.getElementById('aftercareNotes').value.trim() || null,
         is_active: document.getElementById('serviceActive').checked,
         display_order: document.getElementById('displayOrder').value || 0
       };
@@ -2413,7 +2318,6 @@ async function showServiceForm(service = null) {
       formData.category_id = parseInt(formData.category_id);
       formData.duration_minutes = parseInt(formData.duration_minutes);
       formData.base_price = parseFloat(formData.base_price);
-      formData.tax_rate = parseFloat(formData.tax_rate);
       formData.display_order = parseInt(formData.display_order);
       
       // Convert room_ids to integers if they exist
@@ -2557,9 +2461,13 @@ function attachEventListeners(container) {
     const status = filterStatus?.value;
     const tabActive = container.querySelector('#tab-active');
     const tabInactive = container.querySelector('#tab-inactive');
+    const tabBtnActive = container.querySelector('.tab-btn[data-tab="active"]');
+    const tabBtnInactive = container.querySelector('.tab-btn[data-tab="inactive"]');
+    
     try {
       if (tabActive) tabActive.innerHTML = '<p class="text-center">Loading...</p>';
       if (tabInactive) tabInactive.innerHTML = '<p class="text-center">Loading...</p>';
+      
       // Fetch from server when category filter is set; else get all
       let fetched = [];
       if (categoryId) {
@@ -2569,17 +2477,45 @@ function attachEventListeners(container) {
       } else {
         fetched = await api.services.getAll();
       }
-      // Apply status filter client-side
-      let filteredServices = fetched;
-      if (status) {
-        filteredServices = filteredServices.filter(s => 
-          status === 'active' ? s.is_active !== false : s.is_active === false
-        );
+      
+      // Apply status filter and show/hide tabs accordingly
+      if (status === 'active') {
+        // Show only active services
+        const activeServices = fetched.filter(s => s.is_active == 1 || s.is_active === true);
+        if (tabActive) tabActive.innerHTML = renderServicesTable(activeServices);
+        if (tabInactive) tabInactive.innerHTML = '';
+        if (tabBtnActive) {
+          tabBtnActive.style.display = 'block';
+          tabBtnActive.textContent = `Active Services (${activeServices.length})`;
+          tabBtnActive.click(); // Switch to active tab
+        }
+        if (tabBtnInactive) tabBtnInactive.style.display = 'none';
+      } else if (status === 'inactive') {
+        // Show only inactive services
+        const inactiveServices = fetched.filter(s => s.is_active == 0 || s.is_active === false);
+        if (tabActive) tabActive.innerHTML = '';
+        if (tabInactive) tabInactive.innerHTML = renderServicesTable(inactiveServices);
+        if (tabBtnActive) tabBtnActive.style.display = 'none';
+        if (tabBtnInactive) {
+          tabBtnInactive.style.display = 'block';
+          tabBtnInactive.textContent = `Inactive Services (${inactiveServices.length})`;
+          tabBtnInactive.click(); // Switch to inactive tab
+        }
+      } else {
+        // Show both tabs (default behavior)
+        const activeServices = fetched.filter(s => s.is_active == 1 || s.is_active === true);
+        const inactiveServices = fetched.filter(s => s.is_active == 0 || s.is_active === false);
+        if (tabActive) tabActive.innerHTML = renderServicesTable(activeServices);
+        if (tabInactive) tabInactive.innerHTML = renderServicesTable(inactiveServices);
+        if (tabBtnActive) {
+          tabBtnActive.style.display = 'block';
+          tabBtnActive.textContent = `Active Services (${activeServices.length})`;
+        }
+        if (tabBtnInactive) {
+          tabBtnInactive.style.display = 'block';
+          tabBtnInactive.textContent = `Inactive Services (${inactiveServices.length})`;
+        }
       }
-      const activeServices = filteredServices.filter(s => s.is_active !== false);
-      const inactiveServices = filteredServices.filter(s => s.is_active === false);
-      if (tabActive) tabActive.innerHTML = renderServicesTable(activeServices);
-      if (tabInactive) tabInactive.innerHTML = renderServicesTable(inactiveServices);
     } catch (error) {
       console.error('Filter error:', error);
       if (tabActive) tabActive.innerHTML = '<p class="text-error text-center">Failed to load services</p>';
@@ -2676,9 +2612,9 @@ function attachEventListeners(container) {
       let filteredCombos = serviceCombos;
       
       if (status === 'active') {
-        filteredCombos = filteredCombos.filter(c => c.is_active !== false);
+        filteredCombos = filteredCombos.filter(c => c.is_active == 1 || c.is_active === true);
       } else if (status === 'inactive') {
-        filteredCombos = filteredCombos.filter(c => c.is_active === false);
+        filteredCombos = filteredCombos.filter(c => c.is_active == 0 || c.is_active === false);
       } else if (status === 'expired') {
         const today = new Date();
         filteredCombos = filteredCombos.filter(c => {
@@ -2697,8 +2633,8 @@ function attachEventListeners(container) {
         });
       }
       
-      const activeCombos = filteredCombos.filter(c => c.is_active !== false);
-      const inactiveCombos = filteredCombos.filter(c => c.is_active === false);
+      const activeCombos = filteredCombos.filter(c => c.is_active == 1 || c.is_active === true);
+      const inactiveCombos = filteredCombos.filter(c => c.is_active == 0 || c.is_active === false);
       
       const tabActive = container.querySelector('#tab-combo-active');
       const tabInactive = container.querySelector('#tab-combo-inactive');
@@ -2732,7 +2668,7 @@ window.servicesModule = {
   },
   
   deleteService: async function(id) {
-    if (confirm('Are you sure you want to delete this service? It will be marked as inactive.')) {
+    if (confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
       try {
         await api.services.delete(id);
         utils.showToast('Service deleted successfully', 'success');

@@ -67,10 +67,14 @@ const api = {
 
     const defaultOptions = {
       headers: {
-        'Content-Type': 'application/json',
         ...(token && { 'Authorization': `Bearer ${token}` })
       }
     };
+    
+    // Only set Content-Type for non-FormData requests
+    if (!(options.body instanceof FormData)) {
+      defaultOptions.headers['Content-Type'] = 'application/json';
+    }
 
     const config = {
       ...defaultOptions,

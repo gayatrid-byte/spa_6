@@ -1,163 +1,148 @@
-// const User = require('../models/user.model');
-
-// async function getSettings(req, res) {
-//   try {
-//     // Return basic settings structure
-//     res.json({
-//       salon: {
-//         name: 'My Salon',
-//         address: '',
-//         phone: '',
-//         email: '',
-//         workingHours: {
-//           monday: { open: '09:00', close: '18:00', closed: false },
-//           tuesday: { open: '09:00', close: '18:00', closed: false },
-//           wednesday: { open: '09:00', close: '18:00', closed: false },
-//           thursday: { open: '09:00', close: '18:00', closed: false },
-//           friday: { open: '09:00', close: '18:00', closed: false },
-//           saturday: { open: '09:00', close: '17:00', closed: false },
-//           sunday: { open: '09:00', close: '17:00', closed: true }
-//         }
-//       },
-//       billing: {
-//         taxRate: 0,
-//         currency: 'USD',
-//         invoicePrefix: 'INV'
-//       }
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// }
-
-// async function updateSettings(req, res) {
-//   try {
-//     // Settings would be stored in a settings table in production
-//     res.json({
-//       message: 'Settings updated successfully',
-//       settings: req.body
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// }
-
-// async function getAllUsers(req, res) {
-//   try {
-//     const salonId = req.user.salon_id;
-//     const users = await User.getAll(salonId);
-    
-//     // Remove password from response
-//     const usersWithoutPassword = users.map(user => {
-//       const { password, ...userWithoutPassword } = user;
-//       return userWithoutPassword;
-//     });
-    
-//     res.json(usersWithoutPassword);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// }
-
-// async function createUser(req, res) {
-//   try {
-//     const bcrypt = require('bcryptjs');
-    
-//     // Hash password
-//     const hashedPassword = await bcrypt.hash(req.body.password || 'default123', 10);
-    
-//     const userData = {
-//       ...req.body,
-//       password: hashedPassword,
-//       salon_id: req.user.salon_id
-//     };
-    
-//     const userId = await User.create(userData);
-//     const user = await User.findById(userId);
-    
-//     const { password, ...userWithoutPassword } = user;
-    
-//     res.status(201).json({
-//       message: 'User created successfully',
-//       user: userWithoutPassword
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// }
-
-// async function updateUser(req, res) {
-//   try {
-//     const { id } = req.params;
-    
-//     const updated = await User.update(id, req.body);
-    
-//     if (!updated) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-    
-//     const user = await User.findById(id);
-//     const { password, ...userWithoutPassword } = user;
-    
-//     res.json({
-//       message: 'User updated successfully',
-//       user: userWithoutPassword
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// }
-
-// async function deleteUser(req, res) {
-//   try {
-//     const { id } = req.params;
-    
-//     // Prevent deleting own account
-//     if (id === req.user.id) {
-//       return res.status(400).json({ error: 'Cannot delete your own account' });
-//     }
-    
-//     const deleted = await User.delete(id);
-    
-//     if (!deleted) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-    
-//     res.json({ message: 'User deleted successfully' });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// }
-
-// module.exports = {
-//   getSettings,
-//   updateSettings,
-//   getAllUsers,
-//   createUser,
-//   updateUser,
-//   deleteUser
-// };
-
+const { pool } = require('../config/database');
 const User = require('../models/user.model');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
-const settingsStore = require('../utils/settingsStore');
+// Configure multer for logo uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '..', 'uploads', 'logos');
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Create unique filename with timestamp and user's salon ID
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const salonId = req.user.salon_id;
+    cb(null, `salon-${salonId}-logo-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Check file type
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
+async function uploadLogo(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No logo file provided' });
+    }
+    
+    const logoPath = `/uploads/logos/${req.file.filename}`;
+    const logoUrl = `${req.protocol}://${req.get('host')}${logoPath}`;
+    const salonId = req.user.salon_id;
+    
+    // Save logo URL to salon settings
+    await pool.query('UPDATE salons SET logo_url = ? WHERE id = ?', [logoUrl, salonId]);
+    
+    res.json({
+      message: 'Logo uploaded successfully',
+      logoPath: logoPath,
+      logoUrl: logoUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('Logo upload error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
 
 async function getSettings(req, res) {
   try {
-    res.json(settingsStore.getSettings());
+    const salonId = req.user?.salon_id || 1;
+    const [rows] = await pool.query('SELECT * FROM salons WHERE id = ?', [salonId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Salon not found' });
+    }
+    
+    const salon = rows[0];
+    
+    // Format settings for frontend
+    const response = {
+      salon: {
+        name: salon.name,
+        address: salon.address,
+        phone: salon.phone,
+        email: salon.email,
+        gstin: salon.gstin,
+        logoUrl: salon.logo_url
+      },
+      billing: {
+        taxRate: parseFloat(salon.billing_tax_rate || 0),
+        currency: salon.billing_currency || 'INR',
+        invoicePrefix: salon.billing_invoice_prefix || 'INV',
+        nextInvoiceNumber: salon.billing_next_invoice_number || 1001
+      }
+    };
+    
+    res.json(response);
   } catch (error) {
+    console.error('Error getting settings:', error);
     res.status(500).json({ error: error.message });
   }
 }
 
 async function updateSettings(req, res) {
   try {
-    const updated = settingsStore.updateSettings(req.body || {});
+    const salonId = req.user?.salon_id || 1;
+    const { salon, billing } = req.body;
+    
+    // Build update query
+    const updateFields = [];
+    const values = [];
+    
+    if (salon) {
+      if (salon.name !== undefined) { updateFields.push('name = ?'); values.push(salon.name); }
+      if (salon.address !== undefined) { updateFields.push('address = ?'); values.push(salon.address); }
+      if (salon.phone !== undefined) { updateFields.push('phone = ?'); values.push(salon.phone); }
+      if (salon.email !== undefined) { updateFields.push('email = ?'); values.push(salon.email); }
+      if (salon.gstin !== undefined) { updateFields.push('gstin = ?'); values.push(salon.gstin); }
+      if (salon.logoUrl !== undefined) { updateFields.push('logo_url = ?'); values.push(salon.logoUrl); }
+    }
+    
+    if (billing) {
+      if (billing.taxRate !== undefined) { updateFields.push('billing_tax_rate = ?'); values.push(billing.taxRate); }
+      if (billing.currency !== undefined) { updateFields.push('billing_currency = ?'); values.push(billing.currency); }
+      if (billing.invoicePrefix !== undefined) { updateFields.push('billing_invoice_prefix = ?'); values.push(billing.invoicePrefix); }
+      if (billing.nextInvoiceNumber !== undefined) { updateFields.push('billing_next_invoice_number = ?'); values.push(billing.nextInvoiceNumber); }
+    }
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    values.push(salonId);
+    
+    const [result] = await pool.query(
+      `UPDATE salons SET ${updateFields.join(', ')} WHERE id = ?`,
+      values
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Salon not found' });
+    }
+    
     res.json({
-      message: 'Settings updated successfully',
-      settings: updated
+      message: 'Settings updated successfully'
     });
   } catch (error) {
+    console.error('Error updating settings:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -255,5 +240,7 @@ module.exports = {
   getAllUsers,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  uploadLogo,
+  upload // Export multer middleware for use in routes
 };

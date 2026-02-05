@@ -31,16 +31,16 @@ class Customer {
         const today = new Date();
         switch (filters.dateFilter) {
           case 'today':
-            query += ' AND DATE(created_at) = CURDATE()';
+            query += ' AND DATE(c.created_at) = CURDATE()';
             break;
           case 'last_7_days':
-            query += ' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)';
+            query += ' AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)';
             break;
           case 'last_30_days':
-            query += ' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
+            query += ' AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
             break;
           case 'last_90_days':
-            query += ' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
+            query += ' AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
             break;
           // 'all' is default, no filter needed
         }

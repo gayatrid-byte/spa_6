@@ -36,10 +36,10 @@ async function createCustomer(req, res) {
       return res.status(400).json({ error: 'Phone number is required' });
     }
     
-    // Basic phone validation (10 digits minimum)
-    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
-    if (!phoneRegex.test(phone)) {
-      return res.status(400).json({ error: 'Please enter a valid phone number' });
+    // Phone validation - exactly 10 digits
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Phone number must be exactly 10 digits' });
     }
     
     const customerData = {
@@ -77,10 +77,10 @@ async function updateCustomer(req, res) {
       return res.status(400).json({ error: 'Phone number is required' });
     }
     
-    // Basic phone validation
-    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
-    if (!phoneRegex.test(phone)) {
-      return res.status(400).json({ error: 'Please enter a valid phone number' });
+    // Phone validation - exactly 10 digits
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Phone number must be exactly 10 digits' });
     }
     
     const customerData = {

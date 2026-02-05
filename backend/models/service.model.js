@@ -4,7 +4,8 @@ class Service {
   // Basic Services
   static async getAll(salonId) {
     try {
-      const [rows] = await pool.query(
+      // First get all services
+      const [services] = await pool.query(
         `SELECT s.*, 
                 sc.name as sub_category_name,
                 mc.name as main_category_name,
@@ -16,7 +17,35 @@ class Service {
          ORDER BY mc.display_order, sc.display_order, s.name`,
         [salonId]
       );
-      return rows;
+      
+      // Get all room assignments for these services in one query
+      if (services.length > 0) {
+        const serviceIds = services.map(s => s.id);
+        const [roomAssignments] = await pool.query(
+          `SELECT sr.service_id, r.* 
+           FROM service_rooms sr
+           INNER JOIN rooms r ON sr.room_id = r.id
+           WHERE sr.service_id IN (${serviceIds.map(() => '?').join(',')}) AND r.is_active = true`,
+          serviceIds
+        );
+        
+        // Group rooms by service_id
+        const roomsByService = {};
+        roomAssignments.forEach(assignment => {
+          if (!roomsByService[assignment.service_id]) {
+            roomsByService[assignment.service_id] = [];
+          }
+          roomsByService[assignment.service_id].push(assignment);
+        });
+        
+        // Attach rooms to each service
+        services.forEach(service => {
+          service.rooms = roomsByService[service.id] || [];
+          service.room_ids = service.rooms.map(r => r.id);
+        });
+      }
+      
+      return services;
     } catch (error) {
       throw new Error(`Error getting services: ${error.message}`);
     }
@@ -143,14 +172,23 @@ class Service {
   }
 
   static async delete(id) {
+    const connection = await pool.getConnection();
     try {
-      const [result] = await pool.query(
-        'UPDATE services SET is_active = false WHERE id = ?',
-        [id]
-      );
+      await connection.beginTransaction();
+      
+      // First, delete service-room associations
+      await connection.query('DELETE FROM service_rooms WHERE service_id = ?', [id]);
+      
+      // Then delete the service itself
+      const [result] = await connection.query('DELETE FROM services WHERE id = ?', [id]);
+      
+      await connection.commit();
       return result.affectedRows > 0;
     } catch (error) {
+      await connection.rollback();
       throw new Error(`Error deleting service: ${error.message}`);
+    } finally {
+      connection.release();
     }
   }
 
@@ -634,15 +672,18 @@ class Service {
     try {
       await connection.beginTransaction();
       
+      // Separate service_ids from combo data
+      const { service_ids, ...comboInsertData } = comboData;
+      
       const [result] = await connection.query(
         `INSERT INTO service_combos SET ?`,
-        [comboData]
+        [comboInsertData]
       );
       
       const comboId = result.insertId;
       
-      if (comboData.service_ids && comboData.service_ids.length > 0) {
-        const serviceValues = comboData.service_ids.map(serviceId => [comboId, serviceId]);
+      if (service_ids && service_ids.length > 0) {
+        const serviceValues = service_ids.map(serviceId => [comboId, serviceId]);
         await connection.query(
           'INSERT INTO combo_services (combo_id, service_id) VALUES ?',
           [serviceValues]
@@ -664,19 +705,22 @@ class Service {
     try {
       await connection.beginTransaction();
       
+      // Separate service_ids from combo data
+      const { service_ids, ...comboUpdateData } = comboData;
+      
       const [result] = await connection.query(
         `UPDATE service_combos SET ? WHERE id = ?`,
-        [comboData, id]
+        [comboUpdateData, id]
       );
       
-      if (comboData.service_ids !== undefined) {
+      if (service_ids !== undefined) {
         await connection.query(
           'DELETE FROM combo_services WHERE combo_id = ?',
           [id]
         );
         
-        if (comboData.service_ids && comboData.service_ids.length > 0) {
-          const serviceValues = comboData.service_ids.map(serviceId => [id, serviceId]);
+        if (service_ids && service_ids.length > 0) {
+          const serviceValues = service_ids.map(serviceId => [id, serviceId]);
           await connection.query(
             'INSERT INTO combo_services (combo_id, service_id) VALUES ?',
             [serviceValues]

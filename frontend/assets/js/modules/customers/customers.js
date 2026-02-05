@@ -377,11 +377,12 @@ function showCustomerForm(customer = null) {
         <label for="customerPhone"><strong>Phone Number *</strong></label>
         <input type="tel" id="customerPhone" name="phone" 
                value="${customer?.phone || ''}" 
-               placeholder="Enter phone number" 
+               placeholder="Enter 10-digit phone number" 
                required
-               pattern="[\\d\\s\\-\\+\\(\\)]{10,}"
-               title="Please enter a valid phone number (minimum 10 digits)">
-        <small class="text-muted">Required field. Phone number must be unique.</small>
+               pattern="[0-9]{10}"
+               maxlength="10"
+               title="Please enter exactly 10 digits">
+        <small class="text-muted">Required field. Must be exactly 10 digits. Phone number must be unique.</small>
       </div>
       
       <div class="form-group">
@@ -429,6 +430,18 @@ function showCustomerForm(customer = null) {
     document.getElementById('customerPhone')?.focus();
   }, 100);
   
+  // Add phone input formatting - only allow numbers and limit to 10 digits
+  const phoneInput = document.getElementById('customerPhone');
+  phoneInput?.addEventListener('input', function(e) {
+    // Remove any non-numeric characters
+    let value = e.target.value.replace(/\D/g, '');
+    // Limit to 10 digits
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    e.target.value = value;
+  });
+  
   // Attach form submit handler
   document.getElementById('customerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -439,10 +452,10 @@ function showCustomerForm(customer = null) {
     const address = document.getElementById('customerAddress').value.trim();
     const notes = document.getElementById('customerNotes').value.trim();
     
-    // Validate phone format
-    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
+    // Validate phone format - exactly 10 digits
+    const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(phone)) {
-      utils.showToast('Please enter a valid phone number (minimum 10 digits)', 'error');
+      utils.showToast('Please enter exactly 10 digits for phone number', 'error');
       return;
     }
     

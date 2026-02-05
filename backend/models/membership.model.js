@@ -87,8 +87,8 @@ class MembershipModel {
 
     const [result] = await pool.query(
       `INSERT INTO memberships 
-       (customer_id, salon_id, plan_id, start_date, end_date, status, wallet_balance, free_services_remaining, guest_passes_remaining)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, 0, 0)`,
+       (customer_id, salon_id, plan_id, start_date, end_date, status, wallet_balance)
+       VALUES (?, ?, ?, ?, ?, 'active', ?)`,
       [
         customerId,
         salonId,
@@ -116,14 +116,6 @@ class MembershipModel {
     if (updates.wallet_balance !== undefined) {
       fields.push('wallet_balance = ?');
       params.push(updates.wallet_balance);
-    }
-    if (updates.free_services_remaining !== undefined) {
-      fields.push('free_services_remaining = ?');
-      params.push(updates.free_services_remaining);
-    }
-    if (updates.guest_passes_remaining !== undefined) {
-      fields.push('guest_passes_remaining = ?');
-      params.push(updates.guest_passes_remaining);
     }
 
     if (fields.length === 0) return false;

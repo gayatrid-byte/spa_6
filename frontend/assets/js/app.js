@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   document.getElementById('currentDate').textContent = currentDate;
 
+  // Load company logo
+  loadCompanyLogo();
+
   // Handle navigation
   handleNavigation();
 
@@ -34,6 +37,30 @@ document.addEventListener('DOMContentLoaded', function () {
   const initialHash = window.location.hash.slice(1) || 'dashboard';
   loadModule(initialHash);
 });
+
+// Load company logo from settings
+async function loadCompanyLogo() {
+  try {
+    const settings = await api.call('/settings', 'GET');
+    const logoContainer = document.getElementById('appLogo');
+    
+    if (settings.salon && logoContainer) {
+      if (settings.salon.logoUrl) {
+        // Display logo with salon name below
+        logoContainer.innerHTML = `
+          <img src="${settings.salon.logoUrl}" alt="Company Logo" style="max-height: 40px; max-width: 200px; object-fit: contain; display: block; margin: 0 auto;">
+          <h3 style="margin: 5px 0 0 0; text-align: center; font-size: 14px; font-weight: 500;">${settings.salon.name || 'Salon Manager'}</h3>
+        `;
+      } else {
+        // Display salon name only if no logo
+        logoContainer.innerHTML = `<h2>${settings.salon.name || 'Salon Manager'}</h2>`;
+      }
+    }
+  } catch (error) {
+    console.log('Could not load company logo:', error);
+    // Keep default text if logo loading fails
+  }
+}
 
 // Handle navigation
 function handleNavigation() {
