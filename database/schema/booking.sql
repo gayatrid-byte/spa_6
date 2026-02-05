@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   status ENUM('pending', 'confirmed', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
   subtotal_amount DECIMAL(10,2) DEFAULT 0,
   discount_amount DECIMAL(10,2) DEFAULT 0,
+  tax_amount DECIMAL(10,2) DEFAULT 0,
+  wallet_applied DECIMAL(10,2) DEFAULT 0,
   total_amount DECIMAL(10,2) DEFAULT 0,
   notes TEXT,
   created_by INT NULL,

@@ -179,6 +179,9 @@ async function createCategory(req, res) {
       categoryId
     });
   } catch (error) {
+    if (error.message && error.message.toLowerCase().includes('already exists')) {
+      return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message });
   }
 }
@@ -202,6 +205,9 @@ async function updateCategory(req, res) {
       message: 'Category updated successfully'
     });
   } catch (error) {
+    if (error.message && error.message.toLowerCase().includes('already exists')) {
+      return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message });
   }
 }

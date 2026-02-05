@@ -173,9 +173,6 @@ function renderCustomersTable(customersList) {
                   const label = endDate ? `${status} until ${endDate}` : status;
                   return `<small class="text-muted">${label}</small>`;
                 })()}
-                  <div class="mt-1">
-                    <button class="btn btn-sm" onclick="window.customersModule.renewMembership(${customer.id}, ${customer.membership_plan_id || 'null'}, '${customer.membership_end_date || ''}', '${customer.membership_status || ''}')">Renew</button>
-                  </div>
               ` : `
                 <div>
                   <button class="btn btn-sm" onclick="window.customersModule.addMembership(${customer.id})">Add Membership</button>
@@ -500,76 +497,58 @@ window.customersModule = {
     }
   },
 
-  renewMembership: async function(customerId, planId = null, currentEndDate = null, currentStatus = null) {
+  addMembership: async function(customerId) {
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const defaultStart = (currentEndDate && currentStatus !== 'expired')
-        ? (() => { const d = new Date(currentEndDate); d.setDate(d.getDate() + 1); return d.toISOString().slice(0,10); })()
-        : today;
-      const isAddFlow = !planId && !currentEndDate;
-
-      // One-click renew if current planId is available
-      if (planId) {
-        try {
-          await api.memberships.assign({ customer_id: customerId, plan_id: planId, start_date: defaultStart });
-          utils.showToast('Membership renewed successfully', 'success');
-          await loadAndRenderCustomers();
-          return;
-        } catch (err) {
-          // Fall back to modal selection on error (e.g., permission, invalid plan)
-          console.warn('One-click renew failed, falling back to modal:', err.message);
-        }
+      const plans = await api.memberships.getPlans();
+      if (!plans || plans.length === 0) {
+        utils.showToast('No membership plans available', 'error');
+        return;
       }
 
-      // Fallback: show modal to select a plan
-      const plans = await api.memberships.getPlans();
+      const today = new Date().toISOString().slice(0, 10);
       const planOptions = plans.map(p => `
-        <option value="${p.id}" ${planId === p.id ? 'selected' : ''}>
+        <option value="${p.id}">
           ${p.name} (${p.tier}) - ${p.duration_days} days
         </option>
       `).join('');
 
       const formHTML = `
-        <form id="renewForm">
+        <form id="assignMembershipForm">
           <div class="form-group">
-            <label for="renewPlan">Plan</label>
-            <select id="renewPlan" class="form-control" required>
+            <label for="assignPlan">Plan</label>
+            <select id="assignPlan" class="form-control" required>
               ${planOptions}
             </select>
           </div>
           <div class="form-group">
-            <label for="renewStart">Start Date</label>
-            <input type="date" id="renewStart" class="form-control" value="${defaultStart}" required />
+            <label for="assignStart">Start Date</label>
+            <input type="date" id="assignStart" class="form-control" value="${today}" required />
           </div>
           <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">${isAddFlow ? 'Assign' : 'Renew'}</button>
+            <button type="submit" class="btn btn-primary">Assign</button>
             <button type="button" class="btn btn-outline" onclick="window.appUtils.closeModal()">Cancel</button>
           </div>
         </form>
       `;
 
-      window.appUtils.showModal(isAddFlow ? 'Add Membership' : 'Renew Membership', formHTML);
+      window.appUtils.showModal('Assign Membership', formHTML);
 
-      document.getElementById('renewForm').addEventListener('submit', async function(e) {
+      document.getElementById('assignMembershipForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const selectedPlan = parseInt(document.getElementById('renewPlan').value, 10);
-        const startDate = document.getElementById('renewStart').value;
+        const selectedPlan = parseInt(document.getElementById('assignPlan').value, 10);
+        const startDate = document.getElementById('assignStart').value;
+
         try {
           await api.memberships.assign({ customer_id: customerId, plan_id: selectedPlan, start_date: startDate });
-          utils.showToast('Membership renewed successfully', 'success');
+          utils.showToast('Membership assigned successfully', 'success');
           window.appUtils.closeModal();
           await loadAndRenderCustomers();
         } catch (err) {
-          utils.showToast(err.message || 'Renewal failed', 'error');
+          utils.showToast(err.message || 'Assignment failed', 'error');
         }
       });
     } catch (error) {
       utils.showToast(error.message || 'Failed to load plans', 'error');
     }
-  }
-  ,
-  addMembership: async function(customerId) {
-    // Reuse renewMembership flow with no current plan or dates
-    return window.customersModule.renewMembership(customerId, null, null, null);
   }
 };

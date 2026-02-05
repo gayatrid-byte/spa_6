@@ -4,6 +4,8 @@ let salonSettings = {};
 let serviceBookings = [];
 let serviceAmount = 0;
 let servicesActualSubtotal = 0;
+let serviceTaxAmount = 0;
+let serviceWalletApplied = 0;
 let sortConfig = { column: null, direction: 'asc' };
 
 export async function render(container) {
@@ -62,7 +64,7 @@ function renderInvoicesTable(invoiceList) {
     <table>
       <thead>
         <tr>
-          <th>Invoice #</th>
+          <th>Invoice </th>
           <th>Customer</th>
           <th class="sortable" data-column="invoice_date">
             Date 
@@ -411,13 +413,23 @@ async function showInvoiceForm(invoice = null) {
         document.getElementById("serviceDetails").style.display = "none";
         serviceAmount = 0;
         servicesActualSubtotal = 0;
+        serviceTaxAmount = 0;
+        serviceWalletApplied = 0;
         const message = bookings.length > 0 ? "All bookings for that day already have invoices - you can add extra items only" : "No bookings found for that day";
         utils.showToast(message, "info");
         
         // Don't fetch autoData if there are no available bookings
       } else {
+        // serviceAmount is the final amount (after discounts)
         serviceAmount = availableBookings.reduce(
           (sum, b) => sum + (parseFloat(b.total_amount) || 0),
+          0
+        );
+        
+        // Initialize servicesActualSubtotal - try to get original subtotal before discounts
+        // This will be updated from booking totals if available
+        servicesActualSubtotal = availableBookings.reduce(
+          (sum, b) => sum + (parseFloat(b.subtotal_amount) || parseFloat(b.total_amount) || 0),
           0
         );
 
@@ -452,24 +464,41 @@ async function showInvoiceForm(invoice = null) {
           const filteredTotals = (autoData.booking_totals || []).filter(t => bookingIdSet.has(Number(t.booking_id)));
           const bookingSubtotalSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.subtotal_amount) || 0), 0);
           const bookingDiscountSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.discount_amount) || 0), 0);
+          const bookingTaxSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.tax_amount) || 0), 0);
+          const bookingWalletSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.wallet_applied) || 0), 0);
           const bookingTotalSum = filteredTotals.reduce((s, t) => s + (parseFloat(t.total_amount) || 0), 0);
 
           console.log('Auto-data filtered booking_totals:', filteredTotals);
           console.log('Auto-data filtered items:', filteredItems);
-          console.log('Booking subtotal/discount/total sums:', { bookingSubtotalSum, bookingDiscountSum, bookingTotalSum });
+          console.log('Booking subtotal/discount/tax/wallet/total sums:', { 
+            bookingSubtotalSum, bookingDiscountSum, bookingTaxSum, bookingWalletSum, bookingTotalSum 
+          });
           console.log('Auto-data raw booking_totals:', autoData.booking_totals);
           console.log('Auto-data raw items:', autoData.items);
 
-          servicesActualSubtotal = filteredTotals.length > 0
-            ? bookingSubtotalSum
-            : filteredItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
-
-          // Also update serviceAmount (after membership) from booking totals if present
+          // Update servicesActualSubtotal from booking totals if available, otherwise use fallback
           if (filteredTotals.length > 0) {
+            servicesActualSubtotal = bookingSubtotalSum;
             serviceAmount = bookingTotalSum;
+            serviceTaxAmount = bookingTaxSum;
+            serviceWalletApplied = bookingWalletSum;
+          } else if (filteredItems.length > 0) {
+            // Use filtered items - try to get original prices for subtotal
+            const itemsSubtotal = filteredItems.reduce((sum, it) => {
+              // Use base_price if available, otherwise use total
+              const basePrice = parseFloat(it.base_price || it.price || it.total || 0);
+              return sum + basePrice;
+            }, 0);
+            servicesActualSubtotal = itemsSubtotal;
+            serviceTaxAmount = 0; // No tax data from items
+            serviceWalletApplied = 0; // No wallet data from items
+            // serviceAmount already set from booking totals above
           }
-        } catch (_) {
-          servicesActualSubtotal = 0;
+          // If neither available, use the fallback values already set
+          
+        } catch (error) {
+          console.log('Error loading auto data, using fallback values:', error);
+          // servicesActualSubtotal and serviceAmount already set as fallbacks above
         }
       }
 
@@ -483,34 +512,57 @@ async function showInvoiceForm(invoice = null) {
   window.updateInvoiceCalculations = function () {
     const currency = salonSettings.billing?.currency || "USD";
     let extraItemsTotal = 0;
+    let extraItemsTax = 0;
+    
     document
       .querySelectorAll("#extraItems .extra-item")
       .forEach((item) => {
         const qty = parseFloat(item.querySelector(".item-qty")?.value) || 0;
         const price = parseFloat(item.querySelector(".item-price")?.value) || 0;
-        extraItemsTotal += qty * price;
+        const itemSubtotal = qty * price;
+        extraItemsTotal += itemSubtotal;
       });
+
+    const taxRate = parseFloat(salonSettings.billing?.taxRate ?? 5) || 5;
+    extraItemsTax = parseFloat((extraItemsTotal * (taxRate / 100)).toFixed(2));
+    const extraItemsWithTax = extraItemsTotal + extraItemsTax;
 
     const membershipDiscount = Math.max(0, parseFloat((servicesActualSubtotal - serviceAmount).toFixed(2)));
     const subtotal = parseFloat((servicesActualSubtotal + extraItemsTotal).toFixed(2));
-    const taxRate = parseFloat(salonSettings.billing?.taxRate ?? 5) || 5;
-    const taxAmount = parseFloat((Math.max(0, subtotal - membershipDiscount) * (taxRate / 100)).toFixed(2));
-    const grandTotal = Math.max(0, parseFloat((subtotal - membershipDiscount + taxAmount).toFixed(2)));
+    const totalTaxAmount = parseFloat((serviceTaxAmount + extraItemsTax).toFixed(2)); // Service tax + extra items tax
+    const totalWalletApplied = parseFloat(serviceWalletApplied.toFixed(2)); // Wallet applied to services
+    const grandTotal = Math.max(0, parseFloat((subtotal - membershipDiscount + totalTaxAmount - totalWalletApplied).toFixed(2)));
 
     document.getElementById("summaryDetails").innerHTML = `
-      <p><strong>Services (actual subtotal):</strong> ${utils.formatCurrency(servicesActualSubtotal, currency)}</p>
-      <p><small>After membership: ${utils.formatCurrency(serviceAmount, currency)}</small></p>
-      <p><strong>Extra Items:</strong> ${utils.formatCurrency(
-        extraItemsTotal,
-        currency
-      )}</p>
-      <hr>
-      <div>
-        <small><strong>Subtotal:</strong> ${utils.formatCurrency(subtotal, currency)}</small><br>
-        <small><strong>Discount (membership):</strong> ${utils.formatCurrency(membershipDiscount, currency)}</small><br>
-        <small><strong>Tax (${taxRate}%):</strong> ${utils.formatCurrency(taxAmount, currency)}</small>
+      <div style="background: #e8f4fd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+        <h6 style="margin: 0 0 8px 0; color: #1976d2;">📋 Services</h6>
+        <p style="margin: 2px 0;"><strong>Services Total:</strong> ${utils.formatCurrency(servicesActualSubtotal, currency)}</p>
+        <p style="margin: 2px 0;"><small>After membership discount: ${utils.formatCurrency(serviceAmount, currency)}</small></p>
+        ${serviceTaxAmount > 0 ? `<p style="margin: 2px 0;"><small>Service Tax Applied: ${utils.formatCurrency(serviceTaxAmount, currency)}</small></p>` : ''}
+        ${serviceWalletApplied > 0 ? `<p style="margin: 2px 0;"><small>Wallet Applied: ${utils.formatCurrency(serviceWalletApplied, currency)}</small></p>` : ''}
       </div>
-      <h5 style="margin-top:8px;">Grand Total: ${utils.formatCurrency(grandTotal, currency)}</h5>
+      
+      ${extraItemsTotal > 0 ? `
+      <div style="background: #fff3e0; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+        <h6 style="margin: 0 0 8px 0; color: #f57c00;">🛍️ Extra Items</h6>
+        <p style="margin: 2px 0;"><strong>Items Subtotal:</strong> ${utils.formatCurrency(extraItemsTotal, currency)}</p>
+        <p style="margin: 2px 0;"><strong>Tax (${taxRate}%):</strong> ${utils.formatCurrency(extraItemsTax, currency)}</p>
+        <p style="margin: 2px 0;"><strong>Items Total:</strong> ${utils.formatCurrency(extraItemsWithTax, currency)}</p>
+      </div>
+      ` : ''}
+      
+      <div style="background: #f1f8e9; padding: 10px; border-radius: 4px;">
+        <h6 style="margin: 0 0 8px 0; color: #388e3c;">💰 Invoice Summary</h6>
+        <div style="font-size: 14px;">
+          <p style="margin: 2px 0;"><strong>Subtotal:</strong> ${utils.formatCurrency(subtotal, currency)}</p>
+          ${membershipDiscount > 0 ? `<p style="margin: 2px 0;"><strong>Membership Discount:</strong> -${utils.formatCurrency(membershipDiscount, currency)}</p>` : ''}
+          ${serviceTaxAmount > 0 ? `<p style="margin: 2px 0;"><strong>Service Tax:</strong> ${utils.formatCurrency(serviceTaxAmount, currency)}</p>` : ''}
+          ${serviceWalletApplied > 0 ? `<p style="margin: 2px 0;"><strong>Wallet Applied:</strong> -${utils.formatCurrency(serviceWalletApplied, currency)}</p>` : ''}
+          ${totalTaxAmount > serviceTaxAmount ? `<p style="margin: 2px 0;"><strong>Tax on Extra Items:</strong> ${utils.formatCurrency(extraItemsTax, currency)}</p>` : ''}
+          <hr style="margin: 8px 0;">
+          <h5 style="margin: 8px 0; color: #2e7d32;">Grand Total: ${utils.formatCurrency(grandTotal, currency)}</h5>
+        </div>
+      </div>
     `;
   };
 
@@ -609,8 +661,12 @@ async function showInvoiceForm(invoice = null) {
       const extraItemsTotal = extraItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
       const subtotal = parseFloat((servicesSubtotal + extraItemsTotal).toFixed(2));
       const taxRate = parseFloat(salonSettings.billing?.taxRate ?? autoData.breakdown?.taxRate ?? 5) || 5;
+      
+      // Calculate tax only on extra items (services already include tax)
+      const extraItemsTax = parseFloat((extraItemsTotal * (taxRate / 100)).toFixed(2));
+      const tax = extraItemsTax;
+      
       const taxableBase = Math.max(0, subtotal - membershipDiscount);
-      const tax = parseFloat((taxableBase * (taxRate / 100)).toFixed(2));
       const total = Math.max(0, parseFloat((taxableBase + tax).toFixed(2)));
 
       const formData = {

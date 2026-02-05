@@ -282,6 +282,36 @@ class Service {
   static async createCategory(salonId, categoryData) {
     try {
       const level = categoryData.parent_id ? 'sub' : 'main';
+
+      // Enforce case-insensitive uniqueness per salon and parent
+      const parentId = categoryData.parent_id || null;
+      let query, params;
+      
+      if (parentId === null) {
+        // For main categories (no parent)
+        query = `SELECT id FROM categories 
+                 WHERE salon_id = ? 
+                   AND level = ? 
+                   AND parent_id IS NULL 
+                   AND LOWER(name) = LOWER(?)
+                 LIMIT 1`;
+        params = [salonId, level, categoryData.name];
+      } else {
+        // For sub-categories (with parent)
+        query = `SELECT id FROM categories 
+                 WHERE salon_id = ? 
+                   AND level = ? 
+                   AND parent_id = ? 
+                   AND LOWER(name) = LOWER(?)
+                 LIMIT 1`;
+        params = [salonId, level, parentId, categoryData.name];
+      }
+      
+      const [existing] = await pool.query(query, params);
+
+      if (existing.length > 0) {
+        throw new Error('Category name already exists for this salon (case-insensitive)');
+      }
       
       const [result] = await pool.query(
         'INSERT INTO categories (salon_id, name, parent_id, level, description, display_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -303,6 +333,50 @@ class Service {
 
   static async updateCategory(id, categoryData) {
     try {
+      const currentCategory = await this.getCategoryById(id);
+      if (!currentCategory) {
+        return false;
+      }
+
+      const parentId = categoryData.parent_id !== undefined ? categoryData.parent_id : currentCategory.parent_id;
+      if (categoryData.parent_id !== undefined) {
+        const level = categoryData.parent_id ? 'sub' : 'main';
+        categoryData.level = level;
+      }
+
+      const level = categoryData.level || (parentId ? 'sub' : 'main');
+
+      // Enforce case-insensitive uniqueness per salon and parent (excluding self)
+      let query, params;
+      
+      if (parentId === null) {
+        // For main categories (no parent)
+        query = `SELECT id FROM categories 
+                 WHERE salon_id = ? 
+                   AND level = ? 
+                   AND parent_id IS NULL 
+                   AND LOWER(name) = LOWER(?) 
+                   AND id != ?
+                 LIMIT 1`;
+        params = [currentCategory.salon_id, level, categoryData.name, id];
+      } else {
+        // For sub-categories (with parent)
+        query = `SELECT id FROM categories 
+                 WHERE salon_id = ? 
+                   AND level = ? 
+                   AND parent_id = ? 
+                   AND LOWER(name) = LOWER(?) 
+                   AND id != ?
+                 LIMIT 1`;
+        params = [currentCategory.salon_id, level, parentId, categoryData.name, id];
+      }
+      
+      const [existing] = await pool.query(query, params);
+
+      if (existing.length > 0) {
+        throw new Error('Category name already exists for this salon (case-insensitive)');
+      }
+
       if (categoryData.parent_id !== undefined) {
         const level = categoryData.parent_id ? 'sub' : 'main';
         categoryData.level = level;
@@ -452,14 +526,22 @@ class Service {
     try {
       await connection.beginTransaction();
       
-      const [appointments] = await connection.query(
-        `SELECT COUNT(*) as count FROM appointments 
-         WHERE room_id = ? AND status != 'cancelled'`,
-        [id]
-      );
-      
-      if (appointments[0].count > 0) {
-        throw new Error('Room has scheduled appointments. Cancel or reassign appointments first.');
+      // Check for appointments only if the table exists
+      try {
+        const [appointments] = await connection.query(
+          `SELECT COUNT(*) as count FROM appointments 
+           WHERE room_id = ? AND status != 'cancelled'`,
+          [id]
+        );
+        
+        if (appointments[0].count > 0) {
+          throw new Error('Room has scheduled appointments. Cancel or reassign appointments first.');
+        }
+      } catch (tableError) {
+        // If appointments table doesn't exist, skip the check
+        if (!tableError.message.includes("doesn't exist")) {
+          throw tableError;
+        }
       }
       
       await connection.query(

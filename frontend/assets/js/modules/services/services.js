@@ -706,11 +706,10 @@ function renderRoomsTable(roomsList) {
                     <i class="fas fa-concierge-bell"></i>
                   </button>
                   <button class="btn btn-sm btn-danger" onclick="servicesModule.deleteRoom(${room.id})"
-                    title="Delete room" ${serviceCount > 0 ? 'disabled' : ''}>
+                    title="Delete room">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
-                ${serviceCount > 0 ? '<small class="text-muted d-block">Remove services first</small>' : ''}
               </td>
             </tr>
           `;
@@ -1193,6 +1192,12 @@ const comboManager = {
     `;
     
     window.appUtils.showModal(isEdit ? 'Edit Combo' : 'Create Combo', formHTML);
+
+    const form = document.getElementById('comboForm');
+    if (form) {
+      form.dataset.comboId = combo?.id ? String(combo.id) : '';
+      form.dataset.isEdit = isEdit ? 'true' : 'false';
+    }
     
     // Setup event listeners
     this.setupComboFormListeners();
@@ -1373,6 +1378,9 @@ const comboManager = {
     const form = document.getElementById('comboForm');
     if (!form) return;
 
+    const comboId = form.dataset.comboId ? parseInt(form.dataset.comboId, 10) : null;
+    const isEdit = form.dataset.isEdit === 'true';
+
     // Get selected service IDs
     const selectedItems = document.querySelectorAll('.selected-service-item');
     const serviceIds = Array.from(selectedItems).map(item => 
@@ -1416,19 +1424,10 @@ const comboManager = {
       return;
     }
 
-    // Check if editing or creating
-    const modalTitle = document.querySelector('.modal-title');
-    const isEdit = modalTitle?.textContent.includes('Edit');
-    
-    // Get combo ID if editing (this would need to be passed differently)
-    // For now, we'll assume it's a create operation
-
     try {
-      if (isEdit) {
-        // For edit, we need the combo ID - this would need to be stored in form data
-        // For now, we'll just create
-        await apiHelper.createComboWithFallback(comboData);
-        utils.showToast('Combo created successfully', 'success');
+      if (isEdit && comboId) {
+        await apiHelper.updateComboWithFallback(comboId, comboData);
+        utils.showToast('Combo updated successfully', 'success');
       } else {
         await apiHelper.createComboWithFallback(comboData);
         utils.showToast('Combo created successfully', 'success');
@@ -3074,7 +3073,7 @@ window.servicesModule = {
   },
   
   deleteRoom: async function(id) {
-    if (confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
+    if (confirm('Delete this room? It will be removed from any linked services. This action cannot be undone.')) {
       try {
         await api.services.deleteRoom(id);
         utils.showToast('Room deleted successfully', 'success');

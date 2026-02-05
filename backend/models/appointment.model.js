@@ -109,12 +109,20 @@ class Booking {
       await connection.beginTransaction();
 
       // Insert booking
+      console.log('[Booking Model] Creating booking with data:', {
+        subtotal_amount: bookingData.subtotal_amount,
+        discount_amount: bookingData.discount_amount,
+        tax_amount: bookingData.tax_amount,
+        wallet_applied: bookingData.wallet_applied,
+        total_amount: bookingData.total_amount
+      });
+      
       const [bookingResult] = await connection.query(
         `INSERT INTO bookings (
           salon_id, customer_id, booking_type, booking_date, start_time,
           end_time, total_duration, status, subtotal_amount,
-          discount_amount, total_amount, notes, created_by, updated_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          discount_amount, tax_amount, wallet_applied, total_amount, notes, created_by, updated_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           bookingData.salon_id,
           bookingData.customer_id || null,
@@ -126,6 +134,8 @@ class Booking {
           bookingData.status || 'pending',
           bookingData.subtotal_amount || 0,
           bookingData.discount_amount || 0,
+          bookingData.tax_amount || 0,
+          bookingData.wallet_applied || 0,
           bookingData.total_amount || 0,
           bookingData.notes || '',
           bookingData.created_by,
@@ -186,6 +196,8 @@ class Booking {
           status = ?,
           subtotal_amount = ?,
           discount_amount = ?,
+          tax_amount = ?,
+          wallet_applied = ?,
           total_amount = ?,
           notes = ?,
           updated_by = ?
@@ -200,6 +212,8 @@ class Booking {
           bookingData.status,
           bookingData.subtotal_amount || 0,
           bookingData.discount_amount || 0,
+          bookingData.tax_amount || 0,
+          bookingData.wallet_applied || 0,
           bookingData.total_amount || 0,
           bookingData.notes || '',
           bookingData.updated_by,
@@ -402,7 +416,10 @@ class Booking {
           SUM(CASE WHEN booking_date = ? THEN 1 ELSE 0 END) as today_bookings,
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_bookings,
           SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed_bookings,
-          SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_bookings,
+          SUM(CASE WHEN status IN ('pending', 'confirmed', 'in_progress') THEN 1 ELSE 0 END) as in_process_bookings,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings,
+          SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
+          COUNT(*) as monthly_bookings,
           SUM(total_amount) as total_revenue,
           AVG(total_amount) as avg_booking_value
          FROM bookings 

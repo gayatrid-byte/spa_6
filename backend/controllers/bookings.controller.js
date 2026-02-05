@@ -72,6 +72,8 @@ async function createBooking(req, res) {
       start_time,
       items,
       discount_amount = 0,
+      tax_amount: frontend_tax_amount = 0,
+      wallet_applied: frontend_wallet_applied = 0,
       notes,
       membership_apply = true,
       apply_free = true,
@@ -138,9 +140,19 @@ async function createBooking(req, res) {
     }
 
     // Apply membership plan and wallet if customer has active membership
-    if (customer_id && membership_apply) {
+    // Only recalculate if frontend didn't provide wallet values
+    console.log('[Bookings] Checking membership for customer:', customer_id, 'membership_apply:', membership_apply, 'apply_wallet:', apply_wallet);
+    if (customer_id && membership_apply && walletApplied === 0) {
       try {
         const membership = await Membership.getUserMembership(customer_id);
+        console.log('[Bookings] Found membership:', membership ? { 
+          id: membership.id, 
+          wallet_balance: membership.wallet_balance, 
+          status: membership.status,
+          discount_percentage: membership.discount_percentage,
+          free_services_remaining: membership.free_services_remaining
+        } : null);
+        
         if (membership && (membership.status === 'active' || membership.status === 'pending')) {
           const percent = parseFloat(membership.discount_percentage || 0);
           // Free services: apply to MOST expensive items first, limited by requested count when provided
@@ -158,32 +170,92 @@ async function createBooking(req, res) {
           // Percentage discount applies on remaining subtotal after free deduction
           const subtotalAfterFree = Math.max(0, subtotal - freeDeduction);
           planDiscount = (apply_percent && percent > 0) ? (subtotalAfterFree * (percent / 100)) : 0;
+          
+          console.log('[Bookings] Discount calculations:', {
+            subtotal,
+            freeDeduction,
+            subtotalAfterFree,
+            planDiscount,
+            manualDiscount
+          });
+          
           // Wallet covers remaining total after manual + plan + free
           const walletBalance = parseFloat(membership.wallet_balance || 0);
           const remainingAfterDiscounts = Math.max(0, subtotalAfterFree - planDiscount - manualDiscount);
-          walletApplied = apply_wallet ? Math.min(walletBalance, remainingAfterDiscounts) : 0;
-
-          // Update membership balances
-          const newWallet = Math.max(0, walletBalance - walletApplied);
-          const newFreeRemaining = Math.max(0, (membership.free_services_remaining || 0) - freeUsed);
-          await Membership.updateMembership(membership.id, {
-            wallet_balance: newWallet,
-            free_services_remaining: newFreeRemaining
+          
+          console.log('[Bookings] Before wallet application:', {
+            walletBalance,
+            subtotalAfterFree,
+            planDiscount,
+            manualDiscount,
+            remainingAfterDiscounts,
+            apply_wallet
           });
+          
+          if (apply_wallet && walletBalance > 0 && remainingAfterDiscounts > 0) {
+            walletApplied = Math.min(walletBalance, remainingAfterDiscounts);
+            console.log('[Bookings] Wallet applied:', walletApplied);
+          } else {
+            console.log('[Bookings] Wallet not applied because:', {
+              apply_wallet,
+              walletBalance: walletBalance > 0,
+              remainingAfterDiscounts: remainingAfterDiscounts > 0
+            });
+          }
+
+          // Update membership balances only if we actually applied something
+          if (walletApplied > 0 || freeUsed > 0) {
+            const newWallet = Math.max(0, walletBalance - walletApplied);
+            const newFreeRemaining = Math.max(0, (membership.free_services_remaining || 0) - freeUsed);
+            await Membership.updateMembership(membership.id, {
+              wallet_balance: newWallet,
+              free_services_remaining: newFreeRemaining
+            });
+            console.log('[Bookings] Updated membership balances:', { newWallet, newFreeRemaining });
+          }
+        } else {
+          console.log('[Bookings] Membership not active or not found');
         }
       } catch (e) {
+        console.log('[Bookings] Error in membership application:', e.message);
         // Ignore membership application errors
       }
     }
 
-    const totalBeforeWallet = Math.max(0, subtotal - manualDiscount - planDiscount - freeDeduction);
+    // Use frontend calculated values if provided, otherwise calculate on backend
+    walletApplied = parseFloat(frontend_wallet_applied || wallet_applied_preview || 0);
+    let taxAmount = parseFloat(frontend_tax_amount || 0);
+    
+    console.log('[Bookings] Frontend values received:', {
+      frontend_wallet_applied,
+      wallet_applied_preview,
+      frontend_tax_amount,
+      apply_wallet,
+      customer_id
+    });
+    
+    // If no tax provided from frontend, calculate 5% tax on subtotal
+    if (taxAmount === 0) {
+      taxAmount = subtotal * 0.05;
+    }
+
+    const totalBeforeWallet = Math.max(0, subtotal + taxAmount - manualDiscount - planDiscount - freeDeduction);
     const total = Math.max(0, totalBeforeWallet - walletApplied);
 
-    // Prefer client preview totals when provided (UI-calculated) to persist exact display values
-    const previewSubtotalNum = parseFloat(subtotal_preview);
-    const previewTotalNum = parseFloat(total_amount_preview);
-    const persistSubtotal = Number.isFinite(previewSubtotalNum) ? Math.max(0, previewSubtotalNum) : subtotal;
-    const persistTotal = Number.isFinite(previewTotalNum) ? Math.max(0, previewTotalNum) : total;
+    console.log('[Bookings] Final calculations:', {
+      subtotal,
+      taxAmount,
+      manualDiscount,
+      planDiscount,
+      freeDeduction,
+      walletApplied,
+      totalBeforeWallet,
+      total
+    });
+
+    // Use server calculated values for consistency
+    const persistSubtotal = subtotal;
+    const persistTotal = total;
 
     // Prepare booking data
     const bookingData = {
@@ -197,6 +269,8 @@ async function createBooking(req, res) {
       status: 'confirmed',
       subtotal_amount: persistSubtotal,
       discount_amount: parseFloat((manualDiscount + planDiscount + freeDeduction).toFixed(2)),
+      tax_amount: parseFloat(taxAmount.toFixed(2)),
+      wallet_applied: parseFloat(walletApplied.toFixed(2)),
       total_amount: persistTotal,
       notes: notes || '',
       created_by: req.user.id,

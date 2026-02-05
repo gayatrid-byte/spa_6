@@ -266,13 +266,6 @@ function renderStaffTable(staffList) {
                   <i class="fas fa-edit"></i>
                 </button>
                 
-                <!-- Attendance Button (⏰) -->
-                <button class="btn btn-sm btn-info" onclick="staffModule.viewStaffAttendance(${staff.id})"
-                  title="View today's attendance">
-                  ⏰
-                  <i class="fas fa-clock"></i>
-                </button>
-                
                 <!-- Delete Button (🗑️) - Only for authorized users -->
                 ${canDelete ? `
                 <button class="btn btn-sm btn-danger" onclick="staffModule.deleteStaff(${staff.id})"
@@ -404,6 +397,16 @@ function attachAllStaffListeners(container) {
 async function showStaffForm(staff = null) {
   const isEdit = !!staff;
   const currentUser = auth.getCurrentUser();
+
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return '';
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().split('T')[0];
+  };
+
+  const dobValue = formatDateForInput(staff?.date_of_birth);
+  const joiningValue = formatDateForInput(staff?.joining_date) || utils.getTodayDate();
   
   const formHTML = `
     <div class="staff-form-container">
@@ -441,7 +444,7 @@ async function showStaffForm(staff = null) {
             <div class="col-md-6">
               <div class="form-group">
                 <label>Date of Birth <span class="text-muted">(Optional)</span></label>
-                <input type="date" id="staffDOB" value="${staff?.date_of_birth || ''}">
+                <input type="date" id="staffDOB" value="${dobValue}">
               </div>
             </div>
           </div>
@@ -472,7 +475,7 @@ async function showStaffForm(staff = null) {
             <div class="col-md-6">
               <div class="form-group">
                 <label>Joining Date * <span class="text-muted">(Required)</span></label>
-                <input type="date" id="staffJoiningDate" value="${staff?.joining_date || utils.getTodayDate()}" required>
+                <input type="date" id="staffJoiningDate" value="${joiningValue}" required>
               </div>
             </div>
             <div class="col-md-6">

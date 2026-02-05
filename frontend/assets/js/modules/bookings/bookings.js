@@ -109,6 +109,7 @@ async function handleBookingFormSubmit(e) {
     end_time: e.target.dataset.endTime,
     discount_amount: parseFloat(e.target.dataset.discount || '0') || 0, // Auto-calculated from membership
     tax_amount: parseFloat(e.target.dataset.tax || '0') || 0, // 5% tax
+    wallet_applied: parseFloat(e.target.dataset.walletApplied || '0') || 0, // Wallet amount applied
     notes: formData.get('notes')
   };
   console.log('[Bookings] initial bookingData', bookingData);
@@ -394,9 +395,8 @@ export async function render(container) {
               </select>
               <select id="filterStatus" class="form-control">
                 <option value="">All Status</option>
-                <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
-                <option value="in_progress">In Progress</option>
+                <option value="in_progress">In Process</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -408,21 +408,40 @@ export async function render(container) {
           </div>
         </div>
         
+        <div class="stats-filter-section">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <label for="monthFilter" class="form-label">Filter Month:</label>
+            <select id="monthFilter" class="form-control" style="width: auto;">
+              <option value="current">Current Month</option>
+              <option value="last">Last Month</option>
+              <option value="last3">Last 3 Months</option>
+            </select>
+          </div>
+        </div>
+
         <div class="stats-cards">
           <div class="stat-card">
             <h3>Today's Bookings</h3>
             <p id="todayBookings" class="stat-value">0</p>
           </div>
           <div class="stat-card">
-            <h3>Pending</h3>
-            <p id="pendingBookings" class="stat-value">0</p>
+            <h3>In Process</h3>
+            <p id="inProcessBookings" class="stat-value">0</p>
           </div>
           <div class="stat-card">
-            <h3>Confirmed</h3>
-            <p id="confirmedBookings" class="stat-value">0</p>
+            <h3>Completed</h3>
+            <p id="completedBookings" class="stat-value">0</p>
           </div>
           <div class="stat-card">
-            <h3>Revenue (30 days)</h3>
+            <h3>Cancelled</h3>
+            <p id="cancelledBookings" class="stat-value">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Total Bookings</h3>
+            <p id="totalBookings" class="stat-value">0</p>
+          </div>
+          <div class="stat-card">
+            <h3>Revenue</h3>
             <p id="monthlyRevenue" class="stat-value">₹0</p>
           </div>
         </div>
@@ -508,17 +527,17 @@ function renderBookingsTable(bookingsList) {
                   <button class="btn btn-sm btn-outline" onclick="window.bookingsModule.editBooking(${booking.id})">
                     <i class="fas fa-edit"></i>
                   </button>
-                  <div class="action-menu-wrap">
+                  <div class="action-menu-wrap" style="position: relative; display: inline-block;">
                     <button class="btn btn-sm btn-outline action-menu-toggle" type="button" aria-haspopup="true" aria-expanded="false">
                       <i class="fas fa-ellipsis-v"></i>
                     </button>
-                    <div class="action-menu" role="menu" style="display:none;">
-                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'confirmed')">Confirm</button>
-                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'in_progress')">Start Service</button>
-                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'completed')">Complete</button>
-                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'cancelled')">Cancel</button>
-                      <div class="dropdown-divider"></div>
-                      <button class="dropdown-item text-danger" type="button" onclick="window.bookingsModule.deleteBooking(${booking.id})">Delete</button>
+                    <div class="action-menu" role="menu" style="display:none; position: absolute; right: 0; top: 100%; min-width: 150px; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0;">
+                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'confirmed')" style="display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer;">Confirm</button>
+                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'in_progress')" style="display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer;">Start Service</button>
+                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'completed')" style="display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer;">Complete</button>
+                      <button class="dropdown-item" type="button" onclick="window.bookingsModule.updateStatus(${booking.id}, 'cancelled')" style="display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer;">Cancel</button>
+                      <hr style="margin: 4px 0; border: 0; border-top: 1px solid #eee;">
+                      <button class="dropdown-item text-danger" type="button" onclick="window.bookingsModule.deleteBooking(${booking.id})" style="display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer; color: #dc3545;">Delete</button>
                     </div>
                   </div>
                 </div>
@@ -553,6 +572,12 @@ function attachEventListeners(container) {
   // New booking button
   const newBookingBtn = container.querySelector('#newBookingBtn');
   newBookingBtn.addEventListener('click', () => showBookingForm());
+  
+  // Month filter
+  const monthFilter = container.querySelector('#monthFilter');
+  monthFilter.addEventListener('change', async function() {
+    await loadDashboardStats();
+  });
 }
 
 // Initialize custom action menu toggles (three dots dropdowns)
@@ -568,12 +593,34 @@ function initActionMenus() {
     const toggle = wrap.querySelector('.action-menu-toggle');
     const menu = wrap.querySelector('.action-menu');
     if (!toggle || !menu) return;
+    
     toggle.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const isOpen = menu.style.display !== 'none';
       closeAllMenus();
+      
       if (!isOpen) {
+        // Calculate position relative to viewport
+        const rect = toggle.getBoundingClientRect();
+        const menuWidth = 150; // min-width from CSS
+        const menuHeight = menu.scrollHeight || 120; // estimate
+        
+        // Position to the right of the button, but check for screen boundaries
+        let left = rect.right + 5;
+        let top = rect.top;
+        
+        // Adjust if menu would go off screen
+        if (left + menuWidth > window.innerWidth) {
+          left = rect.left - menuWidth - 5; // Show to the left instead
+        }
+        
+        if (top + menuHeight > window.innerHeight) {
+          top = window.innerHeight - menuHeight - 10; // Move up if too low
+        }
+        
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
         menu.style.display = 'block';
         toggle.setAttribute('aria-expanded', 'true');
       }
@@ -609,16 +656,28 @@ async function applyFilters() {
 async function loadDashboardStats() {
   try {
     const stats = await api.bookings.stats();
+    console.log('Dashboard stats received:', stats);
     const contentArea = document.getElementById('contentArea');
     
     if (contentArea) {
-      contentArea.querySelector('#todayBookings').textContent = stats.today_bookings || 0;
-      contentArea.querySelector('#pendingBookings').textContent = stats.pending_bookings || 0;
-      contentArea.querySelector('#confirmedBookings').textContent = stats.confirmed_bookings || 0;
-      contentArea.querySelector('#monthlyRevenue').textContent = `₹${utils.formatCurrency(stats.total_revenue || 0)}`;
+      // Update all dashboard cards
+      const todayEl = contentArea.querySelector('#todayBookings');
+      const inProcessEl = contentArea.querySelector('#inProcessBookings');
+      const completedEl = contentArea.querySelector('#completedBookings');
+      const cancelledEl = contentArea.querySelector('#cancelledBookings');
+      const totalEl = contentArea.querySelector('#totalBookings');
+      const revenueEl = contentArea.querySelector('#monthlyRevenue');
+      
+      if (todayEl) todayEl.textContent = stats.today_bookings || 0;
+      if (inProcessEl) inProcessEl.textContent = stats.in_process_bookings || 0;
+      if (completedEl) completedEl.textContent = stats.completed_bookings || 0;
+      if (cancelledEl) cancelledEl.textContent = stats.cancelled_bookings || 0;
+      if (totalEl) totalEl.textContent = stats.monthly_bookings || 0;
+      if (revenueEl) revenueEl.textContent = `₹${utils.formatCurrency(stats.total_revenue || 0)}`;
     }
   } catch (error) {
     console.error('Error loading stats:', error);
+    utils.showToast('Error loading dashboard statistics', 'error');
   }
 }
 
@@ -1424,6 +1483,14 @@ window.bookingsModule = {
               <div class="summary-row">
                 <span>Discount:</span>
                 <span>₹${utils.formatCurrency(booking.discount_amount)}</span>
+              </div>
+              <div class="summary-row">
+                <span>Tax (5%):</span>
+                <span>₹${utils.formatCurrency(booking.tax_amount || 0)}</span>
+              </div>
+              <div class="summary-row">
+                <span>Wallet Applied:</span>
+                <span>₹${utils.formatCurrency(booking.wallet_applied || 0)}</span>
               </div>
               <div class="summary-row total">
                 <span>Total Amount:</span>

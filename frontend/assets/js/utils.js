@@ -109,11 +109,16 @@ const utils = {
   
   // Format time to readable string
   formatTime(timeString) {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
+    if (!timeString) return '';
+    const parts = String(timeString).split(':');
+    if (parts.length < 2) return '';
+    const [hours, minutes] = parts;
+    const hour = parseInt(hours, 10);
+    if (Number.isNaN(hour)) return '';
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const formattedHour = hour % 12 || 12;
-    return `${formattedHour}:${minutes} ${ampm}`;
+    const mins = (minutes || '').padStart(2, '0');
+    return `${formattedHour}:${mins} ${ampm}`;
   },
   
   // Format currency with support for multiple currencies

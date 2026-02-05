@@ -2461,7 +2461,6 @@ tbody tr:hover {
   width: 100%;
   background: white;
   border-radius: 8px;
-  overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -2506,11 +2505,81 @@ tbody tr:hover {
 }
 
 .action-buttons .dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  z-index: 1000;
+  position: fixed;
+  right: auto;
+  top: auto;
+  z-index: 9999;
   min-width: 160px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  padding: 8px 0;
+  display: none;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+}
+
+.action-buttons .dropdown:hover .dropdown-menu,
+.action-buttons .dropdown .dropdown-menu.show {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.action-buttons .dropdown-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
+}
+
+.action-buttons .dropdown-menu button:hover {
+  background-color: var(--bg-light);
+}
+
+.action-buttons .dropdown-menu button.danger:hover {
+  background-color: #fee;
+  color: var(--error-color);
+}
+
+/* Action Menu Styles */
+.action-menu {
+  position: fixed !important;
+  min-width: 150px !important;
+  background: white !important;
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  z-index: 9999 !important;
+  padding: 4px 0 !important;
+}
+
+.action-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
+}
+
+.action-menu button:hover {
+  background-color: var(--bg-light);
+}
+
+.action-menu button.danger:hover {
+  background-color: #fee;
+  color: var(--error-color);
 }
 
 /* Booking Form */
