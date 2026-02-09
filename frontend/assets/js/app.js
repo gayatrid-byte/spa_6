@@ -157,12 +157,12 @@ function handleModal() {
     });
   }
 
-  // Close on outside click
-  modal.addEventListener('click', function (e) {
-    if (e.target === modal) {
-      modal.classList.remove('active');
-    }
-  });
+  // Removed: Close on outside click - forms should only close via Cancel button
+  // modal.addEventListener('click', function (e) {
+  //   if (e.target === modal) {
+  //     modal.classList.remove('active');
+  //   }
+  // });
 }
 
 // Show modal
