@@ -220,6 +220,11 @@ async function handleBookingFormSubmit(e) {
     }
 
     window.appUtils.closeModal();
+    
+    // Refresh calendar if module loaded
+    window.CalendarModule?.refreshEvents();
+    window.CalendarModule?.loadTodayStats();
+    
     const contentArea = document.getElementById('contentArea');
     await render(contentArea);
   } catch (error) {
@@ -679,7 +684,7 @@ async function loadDashboardStats() {
 }
 
 async function showBookingForm(booking = null) {
-  const isEdit = !!booking;
+  const isEdit = !!(booking && booking.id);
   console.log('[Bookings] showBookingForm', { isEdit, booking });
   
   // Load all required data for form
@@ -712,13 +717,13 @@ async function showBookingForm(booking = null) {
             <div class="form-group">
               <label for="bookingDate">Date *</label>
               <input type="date" id="bookingDate" name="booking_date" 
-                     value="${isEdit ? booking.booking_date : utils.getTodayDate()}" required>
+                     value="${isEdit ? booking.booking_date : (booking?.booking_date || utils.getTodayDate())}" required>
             </div>
             
             <div class="form-group">
               <label for="startTime">Start Time *</label>
               <input type="time" id="startTime" name="start_time" 
-                     value="${isEdit ? booking.start_time : '10:00'}" required>
+                     value="${isEdit ? booking.start_time : (booking?.booking_time || '10:00')}" required>
             </div>
           </div>
           
@@ -1533,3 +1538,26 @@ window.bookingsModule = {
 };
 
 
+
+
+document.addEventListener('open-booking-form', async (e) => {
+  const data = e?.detail || {};
+  const bookingId = data.booking_id;
+  
+  try {
+    if (bookingId) {
+      // EDIT MODE: load existing booking
+      const booking = await api.bookings.getById(bookingId);
+      showBookingForm(booking);
+    } else {
+      // ADD MODE: open new booking form with date/time
+      showBookingForm({
+        booking_date: data.booking_date,
+        booking_time: data.booking_time
+      });
+    }
+  } catch (error) {
+    console.error('Error opening booking form:', error);
+    utils.showToast(error.message || 'Error opening booking form', 'error');
+  }
+});

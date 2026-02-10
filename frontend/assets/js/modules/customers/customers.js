@@ -565,3 +565,8 @@ window.customersModule = {
     }
   }
 };
+
+// 📞 Listen for customer form event from calendar
+document.addEventListener('open-customer-form', () => {
+  showCustomerForm();
+});
