@@ -790,13 +790,13 @@ export async function showBookingForm(booking = null) {
             <div class="form-group">
               <label for="bookingDate">Date *</label>
               <input type="date" id="bookingDate" name="booking_date" 
-                     value="${isEdit ? booking.booking_date : utils.getTodayDate()}" required>
+                     value="${isEdit ? booking.booking_date : (window.calendarBookingPayload?.date || utils.getTodayDate())}" required>
             </div>
             
             <div class="form-group">
               <label for="startTime">Start Time *</label>
               <input type="time" id="startTime" name="start_time" 
-                     value="${isEdit ? booking.start_time : '10:00'}" required>
+                     value="${isEdit ? booking.start_time : (window.calendarBookingPayload?.time || '10:00')}" required>
             </div>
           </div>
           

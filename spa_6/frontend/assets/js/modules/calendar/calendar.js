@@ -679,7 +679,7 @@ function initCalendar() {
 
   window.calendarInstance = new FullCalendar.Calendar(calendarEl, {
 
-    initialView: 'dayGridMonth',
+    initialView: 'timeGridDay',
     selectable: true,
     editable: true,
     nowIndicator: true,
@@ -706,15 +706,16 @@ function initCalendar() {
         const staffId = document.getElementById('staffFilter')?.value || '';
         const roomId = document.getElementById('roomFilter')?.value || '';
 
-        const events = await api.request('/calendar/events', {
-          method: 'GET',
-          params: {
-            start: info.startStr.slice(0, 10),
-            end: info.endStr.slice(0, 10),
-            staff_id: staffId,
-            room_id: roomId
-          }
+        // Build query parameters
+        const params = new URLSearchParams({
+          start: info.startStr.slice(0, 10),
+          end: info.endStr.slice(0, 10)
         });
+
+        if (staffId) params.append('staff_id', staffId);
+        if (roomId) params.append('room_id', roomId);
+
+        const events = await api.request(`/calendar/events?${params.toString()}`);
 
         successCallback(events);
 
@@ -732,11 +733,11 @@ function initCalendar() {
 
         await api.request(`/calendar/events/${info.event.id}`, {
           method: 'PUT',
-          body: {
+          body: JSON.stringify({
             booking_date: info.event.startStr.slice(0, 10),
             start_time: info.event.startStr.slice(11, 16),
             end_time: info.event.endStr.slice(11, 16)
-          }
+          })
         });
 
         utils.showToast("Booking updated", "success");
@@ -755,11 +756,11 @@ function initCalendar() {
 
         await api.request(`/calendar/events/${info.event.id}`, {
           method: 'PUT',
-          body: {
+          body: JSON.stringify({
             booking_date: info.event.startStr.slice(0, 10),
             start_time: info.event.startStr.slice(11, 16),
             end_time: info.event.endStr.slice(11, 16)
-          }
+          })
         });
 
         utils.showToast("Duration updated", "success");
