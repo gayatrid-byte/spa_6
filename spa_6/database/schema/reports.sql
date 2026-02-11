@@ -1,0 +1,2 @@
+-- This file is a placeholder for any report-specific views or stored procedures
+-- Reports are generated dynamically using queries on existing tables

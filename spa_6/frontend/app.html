@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salon Management System</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <!-- FullCalendar (global build) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js" defer></script>
+  <!-- Font Awesome for icons used in action buttons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div id="appLogo">
+          <h2>Salon Manager</h2>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-link active" data-module="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="#staff" class="nav-link" data-module="staff">
+          <span class="nav-icon">🙎🏻‍♂️</span>
+          <span class="nav-text">Staff Management</span>
+        </a>
+        <a href="#customers" class="nav-link" data-module="customers">
+          <span class="nav-icon">👥</span>
+          <span class="nav-text">Customers</span>
+        </a>
+        
+        <a href="#services" class="nav-link" data-module="services">
+          <span class="nav-icon">💇</span>
+          <span class="nav-text">Services</span>
+        </a>
+        <a href="#calendar" class="nav-link" data-module="calendar">
+          <span class="nav-icon">🗓️</span>
+          <span class="nav-text">Calendar</span>
+        </a>
+        
+        <a href="#bookings" class="nav-link" data-module="bookings">
+          <span class="nav-icon">📅</span>
+          <span class="nav-text">Bookings</span>
+        </a>
+        
+        <a href="#billing" class="nav-link" data-module="billing">
+          <span class="nav-icon">💰</span>
+          <span class="nav-text">Billing</span>
+        </a>
+        
+        <a href="#expenses" class="nav-link" data-module="expenses">
+          <span class="nav-icon">💸</span>
+          <span class="nav-text">Expenses</span>
+        </a>
+        
+        <a href="#reports" class="nav-link" data-module="reports">
+          <span class="nav-icon">📈</span>
+          <span class="nav-text">Reports</span>
+        </a>
+
+        <a href="#memberships" class="nav-link" data-module="memberships">
+          <span class="nav-icon">🎟️</span>
+          <span class="nav-text">Memberships</span>
+        </a>
+        
+        <a href="#settings" class="nav-link" data-module="settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-text">Settings</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <span id="userName">User</span>
+          <span id="userRole">Role</span>
+        </div>
+        <button id="logoutBtn" class="btn btn-outline btn-sm">Logout</button>
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-header">
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="header-actions">
+          <span id="currentDate"></span>
+        </div>
+      </header>
+      
+      <div id="contentArea" class="content-area">
+        <!-- Dynamic content will be loaded here -->
+      </div>
+    </main>
+  </div>
+  
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Modal Title</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Modal content -->
+      </div>
+    </div>
+  </div>
+  
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/permissions.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
