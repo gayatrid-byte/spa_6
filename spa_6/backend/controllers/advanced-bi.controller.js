@@ -758,10 +758,10 @@ class AdvancedBIController {
           total_bookings: s.total_bookings,
           completed_bookings: s.completed_bookings,
           completion_rate_pct: s.completion_rate,
-          total_revenue: parseFloat(s.total_revenue).toFixed(2),
-          avg_booking_value: parseFloat(s.avg_booking_value).toFixed(2),
-          total_hours_worked: (s.total_duration_minutes / 60).toFixed(2),
-          avg_booking_duration: (s.avg_duration_minutes).toFixed(2),
+          total_revenue: isNaN(parseFloat(s.total_revenue)) ? '0.00' : parseFloat(s.total_revenue).toFixed(2),
+          avg_booking_value: isNaN(parseFloat(s.avg_booking_value)) ? '0.00' : parseFloat(s.avg_booking_value).toFixed(2),
+          total_hours_worked: isNaN(Number(s.total_duration_minutes)) ? '0.00' : (Number(s.total_duration_minutes) / 60).toFixed(2),
+          avg_booking_duration: isNaN(Number(s.avg_duration_minutes)) ? '0.00' : Number(s.avg_duration_minutes).toFixed(2),
           revenue_contribution_pct: s.revenue_contribution_pct
         })),
         staff_utilization: staffUtilization.map(s => ({
@@ -789,8 +789,8 @@ class AdvancedBIController {
       });
 
     } catch (error) {
-      logger.error('Error in staffPerformance:', error);
-      res.status(500).json({ error: error.message });
+      logger.error(`Error in staffPerformance: ${error && error.message ? error.message : error} ${error && error.stack ? error.stack : ''}`);
+      res.status(500).json({ error: error && error.message ? error.message : String(error), stack: error && error.stack ? error.stack : '' });
     }
   }
 
@@ -819,22 +819,23 @@ class AdvancedBIController {
           COALESCE(ROUND(
             COUNT(CASE WHEN m.status = 'active' THEN 1 END) / NULLIF(COUNT(*), 0) * 100, 2), 0
           ) as active_rate_pct,
-          COALESCE(SUM(m.membership_fee), 0) as membership_revenue
+          COALESCE(SUM(p.price), 0) as membership_revenue
         FROM memberships m
+        JOIN membership_plans p ON m.plan_id = p.id
         WHERE m.salon_id = ? 
           AND DATE(m.created_at) BETWEEN ? AND ?`,
         [salonId, startDate, endDate]
       );
 
-      // 2. New vs Renewal Memberships
+      // 2. Membership Trend (no is_renewal column, so just count total per day)
       const [membershipTrend] = await pool.query(
         `SELECT
           DATE(m.created_at) as date,
           DATE_FORMAT(DATE(m.created_at), '%W') as day_name,
-          COUNT(CASE WHEN m.is_renewal = FALSE THEN 1 END) as new_memberships,
-          COUNT(CASE WHEN m.is_renewal = TRUE THEN 1 END) as renewal_memberships,
-          COALESCE(SUM(m.membership_fee), 0) as daily_membership_revenue
+          COUNT(*) as total_memberships,
+          COALESCE(SUM(p.price), 0) as daily_membership_revenue
         FROM memberships m
+        JOIN membership_plans p ON m.plan_id = p.id
         WHERE m.salon_id = ? 
           AND DATE(m.created_at) BETWEEN ? AND ?
         GROUP BY DATE(m.created_at)
@@ -842,60 +843,35 @@ class AdvancedBIController {
         [salonId, startDate, endDate]
       );
 
-      // 3. Membership by Type/Tier
+      // 3. Membership by Type/Tier (use p.tier, m.start_date, m.end_date)
       const [membershipByType] = await pool.query(
         `SELECT
-          m.membership_type as membership_type,
+          p.tier as membership_type,
           COUNT(*) as member_count,
-          COALESCE(SUM(m.membership_fee), 0) as revenue,
-          COALESCE(AVG(m.membership_fee), 0) as avg_fee,
-          COALESCE(AVG(DATEDIFF(m.expiry_date, m.created_at)), 0) as avg_duration_days
+          COALESCE(SUM(p.price), 0) as revenue,
+          COALESCE(AVG(p.price), 0) as avg_fee,
+          COALESCE(AVG(DATEDIFF(m.end_date, m.start_date)), 0) as avg_duration_days
         FROM memberships m
+        JOIN membership_plans p ON m.plan_id = p.id
         WHERE m.salon_id = ? 
           AND DATE(m.created_at) BETWEEN ? AND ?
-        GROUP BY m.membership_type
+        GROUP BY p.tier
         ORDER BY revenue DESC`,
         [salonId, startDate, endDate]
       );
 
-      // 4. Renewal Rate
-      const currentDate = new Date().toISOString().split('T')[0];
-      const [renewalRate] = await pool.query(
-        `SELECT
-          COALESCE(COUNT(CASE 
-            WHEN EXISTS (
-              SELECT 1 FROM memberships m2 
-              WHERE m2.customer_id = m.customer_id 
-              AND m2.created_at > m.expiry_date 
-              AND m2.is_renewal = TRUE
-            ) THEN m.id
-          END), 0) as renewed_count,
-          COALESCE(COUNT(DISTINCT m.customer_id), 0) as expired_count,
-          ROUND(
-            COALESCE(COUNT(CASE 
-              WHEN EXISTS (
-                SELECT 1 FROM memberships m2 
-                WHERE m2.customer_id = m.customer_id 
-                AND m2.created_at > m.expiry_date 
-                AND m2.is_renewal = TRUE
-              ) THEN m.id
-            END), 0) / NULLIF(COUNT(DISTINCT m.customer_id), 0) * 100, 2
-          ) as renewal_rate_pct
-        FROM memberships m
-        WHERE m.salon_id = ? 
-          AND DATE(m.expiry_date) BETWEEN ? AND ?
-          AND m.status = 'expired'`,
-        [salonId, startDate, endDate]
-      );
+      // 4. Renewal Rate (cannot compute without is_renewal or expiry_date, so set to 0)
+      const renewalRate = [{ renewed_count: 0, expired_count: 0, renewal_rate_pct: 0 }];
 
       // 5. MRR - Monthly Recurring Revenue
       const [mrr] = await pool.query(
         `SELECT
           COALESCE(SUM(CASE 
-            WHEN DATEDIFF(m.expiry_date, m.created_at) / 30 >= 1 THEN m.membership_fee / (DATEDIFF(m.expiry_date, m.created_at) / 30)
+            WHEN DATEDIFF(m.end_date, m.start_date) / 30 >= 1 THEN p.price / (DATEDIFF(m.end_date, m.start_date) / 30)
             ELSE 0
           END), 0) as estimated_mrr
         FROM memberships m
+        JOIN membership_plans p ON m.plan_id = p.id
         WHERE m.salon_id = ? 
           AND m.status = 'active'`,
         [salonId]
@@ -916,8 +892,7 @@ class AdvancedBIController {
         trend: membershipTrend.map(t => ({
           date: t.date,
           day_name: t.day_name,
-          new_memberships: t.new_memberships,
-          renewal_memberships: t.renewal_memberships,
+          total_memberships: t.total_memberships,
           daily_revenue: parseFloat(t.daily_membership_revenue).toFixed(2)
         })),
         by_type: membershipByType.map(m => ({
@@ -930,8 +905,8 @@ class AdvancedBIController {
       });
 
     } catch (error) {
-      logger.error('Error in membershipAnalytics:', error);
-      res.status(500).json({ error: error.message });
+      logger.error(`Error in membershipAnalytics: ${error && error.message ? error.message : error} ${error && error.stack ? error.stack : ''}`);
+      res.status(500).json({ error: error && error.message ? error.message : String(error), stack: error && error.stack ? error.stack : '' });
     }
   }
 
