@@ -1,0 +1,505 @@
+/**
+ * ============================================
+ * PREMIUM TEMPLATE SHOWCASE CSS
+ * SaaS Dashboard Marketplace Design
+ * ============================================
+ */
+
+/* ============================================
+   SHOWCASE SECTION HEADER
+   ============================================ */
+
+.template-showcase-section {
+  padding: 80px 32px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-top: 1px solid var(--border);
+  margin-top: 60px;
+}
+
+.showcase-header {
+  text-align: center;
+  margin-bottom: 60px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.showcase-title {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.showcase-subtitle {
+  font-size: 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ============================================
+   FILTER TABS
+   ============================================ */
+
+.template-filters {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 60px;
+  flex-wrap: wrap;
+}
+
+.template-filter-btn {
+  padding: 10px 20px;
+  border: 2px solid var(--border);
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-family: var(--font-sans);
+}
+
+.template-filter-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.template-filter-btn.active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================
+   TEMPLATES GRID
+   ============================================ */
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 60px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ============================================
+   TEMPLATE CARD
+   ============================================ */
+
+.template-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.template-card:hover {
+  transform: translateY(-12px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-light);
+  background: var(--bg-primary);
+}
+
+.template-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.template-card:hover::before {
+  opacity: 1;
+}
+
+/* ============================================
+   TEMPLATE CARD IMAGE
+   ============================================ */
+
+.template-card-image {
+  position: relative;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.template-thumbnail {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-thumbnail svg {
+  width: 80%;
+  height: 80%;
+  max-width: 240px;
+  max-height: 160px;
+}
+
+/* Template-specific thumbnail styles */
+.revenue-thumbnail {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0.02) 100%);
+}
+
+.bookings-thumbnail {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(245, 158, 11, 0.02) 100%);
+}
+
+.customer-thumbnail {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%);
+}
+
+.staff-thumbnail {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0.02) 100%);
+}
+
+.membership-thumbnail {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(139, 92, 246, 0.02) 100%);
+}
+
+.expense-thumbnail {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.02) 100%);
+}
+
+.service-thumbnail {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
+}
+
+.ai-thumbnail {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(139, 92, 246, 0.02) 100%);
+}
+
+.template-card-image:hover .template-thumbnail svg {
+  transform: scale(1.05);
+  transition: transform var(--transition-base);
+}
+
+/* ============================================
+   TEMPLATE BADGE
+   ============================================ */
+
+.template-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--primary);
+  color: white;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================
+   TEMPLATE CARD CONTENT
+   ============================================ */
+
+.template-card-content {
+  padding: 24px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.template-card-content h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.template-card-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+  flex-grow: 1;
+}
+
+/* ============================================
+   FEATURE TAGS
+   ============================================ */
+
+.template-features {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.feature-tag {
+  display: inline-flex;
+  padding: 4px 10px;
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ============================================
+   TEMPLATE CARD FOOTER
+   ============================================ */
+
+.template-card-footer {
+  padding: 16px 24px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-light);
+  transition: all var(--transition-base);
+}
+
+.template-demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all var(--transition-base);
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-sans);
+}
+
+.template-demo-btn:hover {
+  color: var(--primary-dark);
+  gap: 10px;
+}
+
+.template-demo-btn:hover::after {
+  content: '→';
+  animation: slideRight var(--transition-fast) ease-out;
+}
+
+@keyframes slideRight {
+  from {
+    transform: translateX(-6px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* ============================================
+   SHOWCASE FOOTER
+   ============================================ */
+
+.showcase-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.view-all-templates-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: var(--primary);
+  color: white;
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-md);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.view-all-templates-btn:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  gap: 12px;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .template-showcase-section {
+    padding: 60px 24px;
+  }
+  
+  .templates-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  
+  .showcase-title {
+    font-size: 28px;
+  }
+  
+  .showcase-subtitle {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .template-showcase-section {
+    padding: 40px 16px;
+    margin-top: 40px;
+  }
+  
+  .templates-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .showcase-title {
+    font-size: 24px;
+  }
+  
+  .showcase-subtitle {
+    font-size: 14px;
+  }
+  
+  .template-filters {
+    gap: 8px;
+    margin-bottom: 40px;
+  }
+  
+  .template-filter-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  .template-card-content {
+    padding: 16px;
+  }
+  
+  .template-card-content h3 {
+    font-size: 16px;
+  }
+  
+  .template-features {
+    margin-bottom: 8px;
+  }
+  
+  .feature-tag {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}
+
+/* ============================================
+   ANIMATION STATES
+   ============================================ */
+
+.template-card {
+  opacity: 1;
+  transition: all var(--transition-base);
+}
+
+.template-card.visible {
+  opacity: 1;
+  animation: slideUp var(--transition-base) ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   MICRO INTERACTIONS
+   ============================================ */
+
+.template-card {
+  position: relative;
+}
+
+.template-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left var(--transition-slow);
+  pointer-events: none;
+}
+
+.template-card:hover::after {
+  left: 100%;
+}
+
+/* Glow effect on hover */
+.template-card:hover {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(37, 99, 235, 0.02) 100%);
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  .template-showcase-section {
+    background: white;
+  }
+  
+  .template-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}

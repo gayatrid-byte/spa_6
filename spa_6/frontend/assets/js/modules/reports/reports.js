@@ -1,33 +1,16 @@
-// Reports module
+// Reports module - Now uses Enterprise BI Dashboard
 export async function render(container) {
-  container.innerHTML = `
-    <div class="card">
-      <h3>Reports</h3>
-      <p class="mb-3">Generate reports for your salon business</p>
-      
-      <div class="form-group">
-        <label for="reportStartDate">Start Date</label>
-        <input type="date" id="reportStartDate" value="${utils.getDateDaysAgo(30)}">
+  // Initialize the integrated BI Dashboard
+  if (window.BIDashboard) {
+    window.BIDashboard.init();
+  } else {
+    container.innerHTML = `
+      <div class="card">
+        <h3>Error</h3>
+        <p class="error-message">BI Dashboard component not loaded. Please refresh the page.</p>
       </div>
-      
-      <div class="form-group">
-        <label for="reportEndDate">End Date</label>
-        <input type="date" id="reportEndDate" value="${utils.getTodayDate()}">
-      </div>
-      
-      <div class="d-flex gap-2 mt-3">
-        <button id="revenueReportBtn" class="btn btn-primary">Revenue Report</button>
-        <button id="appointmentsReportBtn" class="btn btn-primary">Appointments Report</button>
-        <button id="profitReportBtn" class="btn btn-primary">Profit Report</button>
-        <button id="servicesReportBtn" class="btn btn-primary">Services Report</button>
-      </div>
-      
-      <div id="reportResults" class="mt-3"></div>
-    </div>
-  `;
-  
-  // Attach event listeners
-  attachEventListeners(container);
+    `;
+  }
 }
 
 function attachEventListeners(container) {

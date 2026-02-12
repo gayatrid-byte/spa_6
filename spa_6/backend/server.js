@@ -20,6 +20,7 @@ const reportRoutes = require('./routes/reports.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const membershipsRoutes = require('./routes/memberships.routes');
 const staffRoutes = require('./routes/staff.routes');
+const advancedBIRoutes = require('./routes/advanced-bi.routes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const calendarRoutes = require('./routes/calendar.routes');
@@ -62,6 +63,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/memberships', membershipsRoutes);
+app.use('/api/bi', advancedBIRoutes);
 
 // Generic routes LAST
 app.use('/api/customers', customerRoutes);
