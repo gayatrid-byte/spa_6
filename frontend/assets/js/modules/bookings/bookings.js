@@ -180,9 +180,10 @@ async function handleBookingFormSubmit(e) {
     booking_date: formData.get('booking_date'),
     start_time: formData.get('start_time'),
     end_time: e.target.dataset.endTime,
-    discount_amount: parseFloat(e.target.dataset.discount || '0') || 0, // Auto-calculated from membership
+    // Booking stores original totals only. Membership discounts/wallets are applied at invoice stage.
+    discount_amount: 0,
     tax_amount: parseFloat(e.target.dataset.tax || '0') || 0, // 5% tax
-    wallet_applied: parseFloat(e.target.dataset.walletApplied || '0') || 0, // Wallet amount applied
+    wallet_applied: 0,
     notes: formData.get('notes')
   };
   console.log('[Bookings] initial bookingData', bookingData);
@@ -192,8 +193,8 @@ async function handleBookingFormSubmit(e) {
   bookingData.apply_wallet = (e.target.dataset.applyWallet === 'true');
   // Preview totals from UI (server may recompute but we provide for consistency)
   bookingData.subtotal_preview = parseFloat(e.target.dataset.subtotal || '0') || 0;
-  bookingData.plan_deduction_preview = parseFloat(e.target.dataset.planDeduction || '0') || 0;
-  bookingData.wallet_applied_preview = parseFloat(e.target.dataset.walletApplied || '0') || 0;
+  bookingData.plan_deduction_preview = 0;
+  bookingData.wallet_applied_preview = 0;
   bookingData.total_amount_preview = parseFloat(e.target.dataset.finalTotal || '0') || 0;
 
   // Handle customer
@@ -649,6 +650,8 @@ function renderBookingsTable(bookingsList) {
 }
 
 function attachEventListeners(container) {
+
+  
   // Filter by type
   const filterType = container.querySelector('#filterType');
   filterType.addEventListener('change', async function () {
@@ -686,6 +689,8 @@ function initActionMenus() {
   const closeAllMenus = () => {
     document.querySelectorAll('.action-menu').forEach(menu => { menu.style.display = 'none'; });
     document.querySelectorAll('.action-menu-toggle').forEach(btn => { btn.setAttribute('aria-expanded', 'false'); });
+    // Remove menu-open class from any rows
+    document.querySelectorAll('.menu-open').forEach(r => r.classList.remove('menu-open'));
   };
 
   // Remove any existing click listeners to avoid duplicates
@@ -758,8 +763,16 @@ function initActionMenus() {
         });
 
         newToggle.setAttribute('aria-expanded', 'true');
+        // Add menu-open class to the row to disable background interactions
+        const row = wrap.closest('tr');
+        if (row) row.classList.add('menu-open');
       }
     });
+    
+    // Prevent clicks inside the menu from bubbling to document (which would close it)
+    menu.addEventListener('click', (ev) => { ev.stopPropagation(); });
+    // Ensure dropdown items do not propagate
+    menu.querySelectorAll('.dropdown-item').forEach(it => it.addEventListener('click', (ev) => { ev.stopPropagation(); }));
   });
 
   // Click outside to close - set up properly without { once: true }
@@ -1104,6 +1117,17 @@ async function initializeBookingForm(booking = null) {
     for (let i = 0; i < booking.items.length; i++) {
       const item = booking.items[i];
       await loadServicesForItem(item.subcategory_id, i);
+      // Pre-load rooms and staff for edit mode so selects can be preselected
+      try {
+        await loadRoomsForItem(item.service_id, i);
+      } catch (e) {
+        console.warn('[Bookings] loadRoomsForItem failed for edit item', e);
+      }
+      try {
+        await loadStaffForItem(item.service_id, i);
+      } catch (e) {
+        console.warn('[Bookings] loadStaffForItem failed for edit item', e);
+      }
     }
   }
 
@@ -1134,6 +1158,23 @@ async function initializeBookingForm(booking = null) {
 
   // Initial compute to reflect default toggle states
   calculateSummary();
+
+  // Attach change listener for dynamically created service selects (delegated)
+  if (!window._bookings_service_select_listener_attached) {
+    window._bookings_service_select_listener_attached = true;
+    document.addEventListener('change', function (e) {
+      try {
+        if (e.target && e.target.classList && e.target.classList.contains('service-select')) {
+          const item = e.target.closest('.service-item');
+          if (!item) return;
+          const index = parseInt(item.dataset.index || '0');
+          loadServiceDetails(e.target, index);
+        }
+      } catch (err) {
+        console.warn('[Bookings] delegated service-select handler error', err);
+      }
+    });
+  }
 
   // Capture basePrice for all existing items (edit mode or initial render)
   Array.from(document.querySelectorAll('.service-item .price-input')).forEach(inp => {
@@ -1487,25 +1528,9 @@ window.calculateSummary = function () {
 
   // Calculate tax (5% default)
   const TAX_PERCENTAGE = 5;
-  const tax = subtotal * (TAX_PERCENTAGE / 100);
+  const tax = parseFloat((subtotal * (TAX_PERCENTAGE / 100)).toFixed(2));
 
-  // Get discount percentage from membership plan
-  let discount = 0;
-  if (window.bookingMembership && window.bookingMembership.discount_percentage) {
-    discount = subtotal * (parseFloat(window.bookingMembership.discount_percentage) / 100);
-  }
-
-  // Get wallet credits from membership
-  let walletApplied = 0;
-  const membershipWallet = parseFloat(window.bookingMembership?.wallet_balance || 0);
-  if (membershipWallet > 0) {
-    // Calculate what's left after subtotal, tax, and discount
-    const amountBeforeWallet = subtotal + tax - discount;
-    walletApplied = Math.min(membershipWallet, Math.max(0, amountBeforeWallet));
-  }
-
-  const total = subtotal + tax - discount;
-  const finalTotal = Math.max(0, total - walletApplied);
+  const total = parseFloat((subtotal + tax).toFixed(2));
 
   // Calculate end time
   const startTime = document.getElementById('startTime').value;
@@ -1518,24 +1543,25 @@ window.calculateSummary = function () {
     endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   }
 
-  // Update display
+  // Update display (Booking summary shows subtotal, tax, total only — wallet only applies at invoice stage)
   document.getElementById('subtotalAmount').textContent = `₹${utils.formatCurrency(subtotal)}`;
   document.getElementById('taxAmount').textContent = `₹${utils.formatCurrency(tax)}`;
-  document.getElementById('discountDisplay').textContent = `₹${utils.formatCurrency(discount)}`;
-  document.getElementById('walletAppliedDisplay').textContent = `₹${utils.formatCurrency(walletApplied)}`;
-  document.getElementById('totalAmount').textContent = `₹${utils.formatCurrency(finalTotal)}`;
+  document.getElementById('discountDisplay').textContent = `₹0.00`;
+  // Keep wallet display but show zero to avoid confusion
+  document.getElementById('walletAppliedDisplay').textContent = `₹0.00`;
+  document.getElementById('totalAmount').textContent = `₹${utils.formatCurrency(total)}`;
   document.getElementById('totalDuration').textContent = `${totalDuration} minutes`;
   document.getElementById('endTime').textContent = endTime;
 
-  // Update form data
+  // Update form data (do not store wallet/discount here)
   document.getElementById('bookingForm').dataset.endTime = endTime;
   document.getElementById('bookingForm').dataset.totalDuration = totalDuration;
   const formEl = document.getElementById('bookingForm');
   formEl.dataset.subtotal = String(subtotal);
   formEl.dataset.tax = String(tax);
-  formEl.dataset.discount = String(discount);
-  formEl.dataset.walletApplied = String(walletApplied);
-  formEl.dataset.finalTotal = String(finalTotal);
+  formEl.dataset.discount = String(0);
+  formEl.dataset.walletApplied = String(0);
+  formEl.dataset.finalTotal = String(total);
 };
 
 async function fetchCustomerMembership(customerId) {
@@ -1630,16 +1656,8 @@ window.bookingsModule = {
                 <span>₹${utils.formatCurrency(booking.subtotal_amount)}</span>
               </div>
               <div class="summary-row">
-                <span>Discount:</span>
-                <span>₹${utils.formatCurrency(booking.discount_amount)}</span>
-              </div>
-              <div class="summary-row">
                 <span>Tax (5%):</span>
                 <span>₹${utils.formatCurrency(booking.tax_amount || 0)}</span>
-              </div>
-              <div class="summary-row">
-                <span>Wallet Applied:</span>
-                <span>₹${utils.formatCurrency(booking.wallet_applied || 0)}</span>
               </div>
               <div class="summary-row total">
                 <span>Total Amount:</span>

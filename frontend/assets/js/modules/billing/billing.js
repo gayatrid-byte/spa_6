@@ -5,7 +5,10 @@ let serviceBookings = [];
 let serviceAmount = 0;
 let servicesActualSubtotal = 0;
 let serviceTaxAmount = 0;
-let serviceWalletApplied = 0;
+// Wallet vars (new)
+let customerWalletBalance = 0;
+let walletApplied = 0;
+let remainingWallet = 0;
 let sortConfig = { column: null, direction: 'asc' };
 
 export async function render(container) {
@@ -306,6 +309,16 @@ async function showInvoiceForm(invoice = null) {
 
   window.appUtils.showModal(isEdit ? "Edit Invoice" : "Create Invoice", formHTML);
 
+  // If editing an existing invoice, preload wallet and service data for that customer
+  if (isEdit && invoice && invoice.customer_id) {
+    try {
+      await window.billingModule.loadCustomerWallet(invoice.customer_id);
+      await window.billingModule.loadServiceData(invoice.customer_id, document.getElementById('invoiceDate').value);
+    } catch (err) {
+      console.warn('Failed to preload invoice customer data', err);
+    }
+  }
+
   document
     .getElementById("invoiceDate")
     .addEventListener("change", async function () {
@@ -323,9 +336,17 @@ async function showInvoiceForm(invoice = null) {
       const date = document.getElementById("invoiceDate").value;
       if (customerId) {
         await window.billingModule.loadCustomerHistory(customerId);
+        // Load customer's membership wallet and unpaid bookings
+        await window.billingModule.loadCustomerWallet(customerId);
         await window.billingModule.loadServiceData(customerId, date);
       }
     });
+
+  // Load wallet when date changes as well (keeps wallet visible)
+  document.getElementById("invoiceDate").addEventListener('change', async function () {
+    const customerId = parseInt(document.getElementById("invoiceCustomer").value);
+    if (customerId) await window.billingModule.loadCustomerWallet(customerId);
+  });
 
   document
     .getElementById("includeAllUnpaid")
@@ -481,7 +502,7 @@ async function showInvoiceForm(invoice = null) {
         serviceAmount = 0;
         servicesActualSubtotal = 0;
         serviceTaxAmount = 0;
-        serviceWalletApplied = 0;
+        walletApplied = 0;
 
         // Only show toast/log if user explicitly selected a customer
         if (customerId) {
@@ -547,18 +568,17 @@ async function showInvoiceForm(invoice = null) {
             servicesActualSubtotal = bookingTotals.reduce((s, t) => s + parseFloat(t.subtotal_amount || 0), 0);
             serviceAmount = bookingTotals.reduce((s, t) => s + parseFloat(t.total_amount || 0), 0);
             serviceTaxAmount = bookingTotals.reduce((s, t) => s + parseFloat(t.tax_amount || 0), 0);
-            serviceWalletApplied = bookingTotals.reduce((s, t) => s + parseFloat(t.wallet_applied || 0), 0);
+            // NOTE: Do not read or apply wallet from bookings here. Wallet applies only at invoice stage.
           } else {
             // Fallback to local sum
             serviceTaxAmount = availableBookings.reduce((s, b) => s + parseFloat(b.tax_amount || 0), 0);
-            serviceWalletApplied = availableBookings.reduce((s, b) => s + parseFloat(b.wallet_applied || 0), 0);
           }
 
-        } catch (error) {
-          console.log('Error fetching details, using booking summaries', error);
-          serviceTaxAmount = availableBookings.reduce((s, b) => s + parseFloat(b.tax_amount || 0), 0);
-          serviceWalletApplied = availableBookings.reduce((s, b) => s + parseFloat(b.wallet_applied || 0), 0);
-        }
+          } catch (error) {
+            console.log('Error fetching details, using booking summaries', error);
+            serviceTaxAmount = availableBookings.reduce((s, b) => s + parseFloat(b.tax_amount || 0), 0);
+            walletApplied = 0;
+          }
       }
 
       window.updateInvoiceCalculations();
@@ -566,6 +586,27 @@ async function showInvoiceForm(invoice = null) {
       console.error("Error loading services:", error);
       utils.showToast("Failed to load booking services", "error");
     }
+  };
+
+  // Load customer's membership and wallet balance
+  window.billingModule.loadCustomerWallet = async function (customerId) {
+    try {
+      customerWalletBalance = 0;
+      window.billingModule.currentMembership = null;
+      if (!customerId) return;
+      const membership = await api.memberships.getForCustomer(customerId);
+      if (membership) {
+        // membership may be null if none
+        window.billingModule.currentMembership = membership || null;
+        customerWalletBalance = parseFloat(membership?.wallet_balance || 0);
+      }
+    } catch (err) {
+      console.warn('Failed to load membership wallet', err);
+      customerWalletBalance = 0;
+      window.billingModule.currentMembership = null;
+    }
+    // Recalculate display
+    window.updateInvoiceCalculations();
   };
 
   window.updateInvoiceCalculations = function () {
@@ -586,43 +627,87 @@ async function showInvoiceForm(invoice = null) {
     extraItemsTax = parseFloat((extraItemsTotal * (taxRate / 100)).toFixed(2));
     const extraItemsWithTax = extraItemsTotal + extraItemsTax;
 
-    const membershipDiscount = Math.max(0, parseFloat((servicesActualSubtotal - serviceAmount).toFixed(2)));
-    const subtotal = parseFloat((servicesActualSubtotal + extraItemsTotal).toFixed(2));
-    const totalTaxAmount = parseFloat((serviceTaxAmount + extraItemsTax).toFixed(2)); // Service tax + extra items tax
-    const totalWalletApplied = parseFloat(serviceWalletApplied.toFixed(2)); // Wallet applied to services
-    const grandTotal = Math.max(0, parseFloat((subtotal - membershipDiscount + totalTaxAmount - totalWalletApplied).toFixed(2)));
+    // New calculation flow: tax before wallet
+    const servicesSubtotal = parseFloat((servicesActualSubtotal || 0).toFixed(2));
+    const subtotal = parseFloat((servicesSubtotal + extraItemsTotal).toFixed(2));
+    const tax = parseFloat((subtotal * (taxRate / 100)).toFixed(2));
+    const grossTotal = parseFloat((subtotal + tax).toFixed(2));
+
+    // wallet logic
+    const useWallet = !!document.getElementById('useMembershipWallet')?.checked;
+    walletApplied = 0;
+    if (useWallet && customerWalletBalance > 0) {
+      walletApplied = Math.min(parseFloat(customerWalletBalance || 0), grossTotal);
+    }
+    remainingWallet = parseFloat(Math.max(0, (parseFloat(customerWalletBalance || 0) - walletApplied)).toFixed(2));
+
+    const finalPayable = parseFloat(Math.max(0, grossTotal - walletApplied).toFixed(2));
+
+    // subtle recalculation animation (opacity fade)
+    const summaryEl = document.getElementById('summaryDetails');
+    if (summaryEl) {
+      summaryEl.style.transition = 'opacity 180ms ease';
+      summaryEl.style.opacity = '0.6';
+      setTimeout(() => { summaryEl.style.opacity = '1'; }, 180);
+    }
 
     document.getElementById("summaryDetails").innerHTML = `
-      <div style="background: #e8f4fd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+      <div style="background: #e8f4fd; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
         <h6 style="margin: 0 0 8px 0; color: #1976d2;">📋 Services</h6>
-        <p style="margin: 2px 0;"><strong>Services Total:</strong> ${utils.formatCurrency(servicesActualSubtotal, currency)}</p>
-        <p style="margin: 2px 0;"><small>After membership discount: ${utils.formatCurrency(serviceAmount, currency)}</small></p>
-        ${serviceTaxAmount > 0 ? `<p style="margin: 2px 0;"><small>Service Tax Applied: ${utils.formatCurrency(serviceTaxAmount, currency)}</small></p>` : ''}
-        ${serviceWalletApplied > 0 ? `<p style="margin: 2px 0;"><small>Wallet Applied: ${utils.formatCurrency(serviceWalletApplied, currency)}</small></p>` : ''}
+        <p style="margin: 2px 0;"><strong>Services Subtotal:</strong> ${utils.formatCurrency(servicesSubtotal, currency)}</p>
+        ${serviceTaxAmount > 0 ? `<p style="margin: 2px 0;"><small>Service Tax (from bookings): ${utils.formatCurrency(serviceTaxAmount, currency)}</small></p>` : ''}
       </div>
-      
+
       ${extraItemsTotal > 0 ? `
-      <div style="background: #fff3e0; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+      <div style="background: #fff3e0; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
         <h6 style="margin: 0 0 8px 0; color: #f57c00;">🛍️ Extra Items</h6>
         <p style="margin: 2px 0;"><strong>Items Subtotal:</strong> ${utils.formatCurrency(extraItemsTotal, currency)}</p>
         <p style="margin: 2px 0;"><strong>Tax (${taxRate}%):</strong> ${utils.formatCurrency(extraItemsTax, currency)}</p>
         <p style="margin: 2px 0;"><strong>Items Total:</strong> ${utils.formatCurrency(extraItemsWithTax, currency)}</p>
       </div>
       ` : ''}
-      
+
+      <div style="background: #f9fafa; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
+        <h6 style="margin: 0 0 8px 0; color: #6a7d8c;">👑 Membership Wallet</h6>
+        <p style="margin:2px 0; color:#333;"><strong>Available Wallet Balance:</strong> ${utils.formatCurrency(customerWalletBalance || 0, currency)}</p>
+        <label style="display:flex; align-items:center; gap:8px; margin:4px 0;">
+          <input type="checkbox" id="useMembershipWallet" ${useWallet ? 'checked' : ''}> <span>Use Membership Wallet</span>
+        </label>
+        <p id="walletAppliedDisplay" style="margin:2px 0; color:#333;"><strong>Wallet Applied:</strong> -${utils.formatCurrency(walletApplied, currency)}</p>
+        <p id="remainingWalletDisplay" style="margin:2px 0; color:#777;"><strong>Remaining Wallet Balance:</strong> ${utils.formatCurrency(remainingWallet, currency)}</p>
+      </div>
+
       <div style="background: #f1f8e9; padding: 10px; border-radius: 4px;">
-        <h6 style="margin: 0 0 8px 0; color: #388e3c;">💰 Invoice Summary</h6>
+        <h6 style="margin: 0 0 8px 0; color: #388e3c;">💰 Final Payment</h6>
         <div style="font-size: 14px;">
-          <p style="margin: 2px 0;"><strong>Subtotal:</strong> ${utils.formatCurrency(subtotal, currency)}</p>
-          ${membershipDiscount > 0 ? `<p style="margin: 2px 0;"><strong>Membership Discount:</strong> -${utils.formatCurrency(membershipDiscount, currency)}</p>` : ''}
-          ${serviceTaxAmount > 0 ? `<p style="margin: 2px 0;"><strong>Service Tax:</strong> ${utils.formatCurrency(serviceTaxAmount, currency)}</p>` : ''}
-          ${serviceWalletApplied > 0 ? `<p style="margin: 2px 0;"><strong>Wallet Applied:</strong> -${utils.formatCurrency(serviceWalletApplied, currency)}</p>` : ''}
-          ${totalTaxAmount > serviceTaxAmount ? `<p style="margin: 2px 0;"><strong>Tax on Extra Items:</strong> ${utils.formatCurrency(extraItemsTax, currency)}</p>` : ''}
-          <hr style="margin: 8px 0;">
-          <h5 style="margin: 8px 0; color: #2e7d32;">Grand Total: ${utils.formatCurrency(grandTotal, currency)}</h5>
+          <p style="margin: 2px 0;"><strong>Gross Total:</strong> ${utils.formatCurrency(grossTotal, currency)}</p>
+          <p style="margin: 2px 0;"><strong>Final Payable Amount:</strong> ${utils.formatCurrency(finalPayable, currency)}</p>
         </div>
       </div>
     `;
+
+    // Attach change listener for wallet checkbox to recalc
+    const walletCheckbox = document.getElementById('useMembershipWallet');
+    if (walletCheckbox) {
+      walletCheckbox.addEventListener('change', () => window.updateInvoiceCalculations());
+    }
+
+    // If final payable is zero, auto-mark status paid and disable payment methods
+    const invoiceStatusEl = document.getElementById('invoiceStatus');
+    const paymentCheckboxes = Array.from(document.querySelectorAll('input[name="payment_method"]'));
+    if (finalPayable === 0) {
+      if (invoiceStatusEl) invoiceStatusEl.value = 'paid';
+      paymentCheckboxes.forEach(ch => { ch.checked = false; ch.disabled = true; });
+    } else {
+      if (invoiceStatusEl && invoiceStatusEl.value === 'paid') invoiceStatusEl.value = 'pending';
+      paymentCheckboxes.forEach(ch => { ch.disabled = false; });
+    }
+
+    // Update wallet info displays if present
+    const walletAppliedEl = document.getElementById('walletAppliedDisplay');
+    const remainingWalletEl = document.getElementById('remainingWalletDisplay');
+    if (walletAppliedEl) walletAppliedEl.innerHTML = `<strong>Wallet Applied:</strong> -${utils.formatCurrency(walletApplied, currency)}`;
+    if (remainingWalletEl) remainingWalletEl.innerHTML = `<strong>Remaining Wallet Balance:</strong> ${utils.formatCurrency(remainingWallet, currency)}`;
   };
 
   document
@@ -746,23 +831,23 @@ async function showInvoiceForm(invoice = null) {
         (bookingSubtotalSum > 0 ? bookingSubtotalSum : serviceItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0)) :
         servicesActualSubtotal; // Use global variable set by loadServiceData
 
-      // Membership-adjusted service total from bookings (use global variable for consistency with display)
-      const membershipAdjustedServiceTotal = Math.max(0, parseFloat(serviceAmount || 0));
-      // Discount equals difference between actual service subtotal and membership-adjusted total  
-      const membershipDiscount = Math.max(0, parseFloat((servicesSubtotal - membershipAdjustedServiceTotal).toFixed(2)));
-
       // Combine service items with extra items for invoice items
       const combinedItems = [...serviceItems, ...extraItemsAsInvoiceItems];
       const extraItemsTotal = extraItems.reduce((sum, it) => sum + (parseFloat(it.total) || 0), 0);
       const subtotal = parseFloat((servicesSubtotal + extraItemsTotal).toFixed(2));
       const taxRate = parseFloat(salonSettings.billing?.taxRate ?? autoData.breakdown?.taxRate ?? 5) || 5;
+      // Tax applied on subtotal (services + extra items)
+      const tax = parseFloat((subtotal * (taxRate / 100)).toFixed(2));
+      const grossTotal = parseFloat((subtotal + tax).toFixed(2));
 
-      // Calculate tax only on extra items (services already include tax from global variables)
-      const extraItemsTax = parseFloat((extraItemsTotal * (taxRate / 100)).toFixed(2));
-      const tax = parseFloat((serviceTaxAmount + extraItemsTax).toFixed(2)); // Use global serviceTaxAmount
-
-      const taxableBase = Math.max(0, subtotal - membershipDiscount);
-      const total = Math.max(0, parseFloat((taxableBase + tax - serviceWalletApplied).toFixed(2))); // Include wallet deduction
+      // Wallet application (only at invoice stage)
+      const useWallet = !!document.getElementById('useMembershipWallet')?.checked;
+      let appliedWallet = 0;
+      if (useWallet && customerWalletBalance > 0) {
+        appliedWallet = Math.min(parseFloat(customerWalletBalance || 0), grossTotal);
+      }
+      const remaining = parseFloat(Math.max(0, (parseFloat(customerWalletBalance || 0) - appliedWallet)).toFixed(2));
+      const finalTotal = parseFloat(Math.max(0, grossTotal - appliedWallet).toFixed(2));
 
       const formData = {
         customer_id: customerId,
@@ -771,15 +856,14 @@ async function showInvoiceForm(invoice = null) {
         booking_ids: serviceBookings.map(b => b.id), // Store booking IDs to prevent duplicates
         subtotal,
         tax,
-        discount: membershipDiscount,
-        total,
-        status: document.getElementById("invoiceStatus").value,
-        payment_methods: paymentMethods,
-        notes: (() => {
-          const base = document.getElementById("invoiceNotes").value || '';
-          const msg = `After applying membership, service total is ${utils.formatCurrency(membershipAdjustedServiceTotal, currency)}.`;
-          return base ? `${base}\n${msg}` : msg;
-        })(),
+        discount: 0, // membership discount removed; wallet handles reductions
+        gross_total: grossTotal,
+        wallet_applied: appliedWallet,
+        remaining_wallet: remaining,
+        total: finalTotal,
+        status: (finalTotal === 0) ? 'paid' : document.getElementById("invoiceStatus").value,
+        payment_methods: (finalTotal === 0) ? [] : paymentMethods,
+        notes: (document.getElementById("invoiceNotes").value || '')
       };
 
       try {
@@ -787,8 +871,17 @@ async function showInvoiceForm(invoice = null) {
           await api.billing.update(invoice.id, formData);
           utils.showToast("Invoice updated successfully", "success");
         } else {
-          await api.billing.create(formData);
+          const created = await api.billing.create(formData);
           utils.showToast("Invoice created successfully", "success");
+
+          // If wallet was used, update membership wallet balance server-side
+          try {
+            if (appliedWallet > 0 && window.billingModule.currentMembership && window.billingModule.currentMembership.id) {
+              await api.memberships.update(window.billingModule.currentMembership.id, { wallet_balance: remaining });
+            }
+          } catch (err) {
+            console.warn('Failed to update membership wallet after invoice creation', err);
+          }
         }
 
         window.appUtils.closeModal();

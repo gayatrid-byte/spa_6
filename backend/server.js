@@ -84,9 +84,19 @@ app.get('/app', (req, res) => {
 // Error handling
 app.use(errorHandler);
 
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error('[Global Error]', err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 // Start server

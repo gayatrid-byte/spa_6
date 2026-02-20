@@ -89,7 +89,7 @@ VALUES
 (1, 'Gold 6-Month', 'Mid-tier with extra perks', 'gold', 6, 199.00, 10.00, 50.00, 'priority', TRUE),
 (1, 'Platinum 12-Month', 'High-tier membership', 'platinum', 12, 349.00, 15.00, 100.00, 'vip', TRUE);
 
-CREATE TABLE membership_payments (
+CREATE TABLE IF NOT EXISTS membership_payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     salon_id INT NOT NULL,
     membership_id INT NOT NULL,
@@ -100,7 +100,13 @@ CREATE TABLE membership_payments (
     invoice_number VARCHAR(100),
     transaction_reference VARCHAR(100),
     payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX (membership_id),
-    INDEX (customer_id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_membership (membership_id),
+    INDEX idx_customer (customer_id),
+    INDEX idx_salon (salon_id),
+    INDEX idx_payment_date (payment_date),
+    CONSTRAINT fk_mp_membership FOREIGN KEY (membership_id) REFERENCES memberships(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mp_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mp_salon FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
 );

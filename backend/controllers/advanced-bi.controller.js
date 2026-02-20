@@ -137,7 +137,7 @@ class AdvancedBIController {
           total_expenses: totalExpenses.toFixed(2)
         },
         daily_trend: dailyTrend || [],
-        payment_breakdown: await this.getPaymentBreakdown(salonId, startDate, endDate)
+        payment_breakdown: await AdvancedBIController.getPaymentBreakdown(salonId, startDate, endDate)
       });
 
     } catch (error) {
@@ -829,7 +829,7 @@ class AdvancedBIController {
         pool.query(`SELECT COALESCE(SUM(amount), 0) as val FROM expenses WHERE salon_id = ? AND DATE(expense_date) BETWEEN ? AND ?`, [salonId, startDate, endDate]),
         pool.query(`SELECT COUNT(*) as val FROM bookings WHERE salon_id = ? AND DATE(booking_date) BETWEEN ? AND ?`, [salonId, startDate, endDate]),
         pool.query(`SELECT COUNT(DISTINCT customer_id) as val FROM bookings WHERE salon_id = ? AND DATE(booking_date) BETWEEN ? AND ?`, [salonId, startDate, endDate]),
-        pool.query(`SELECT COUNT(*) as val FROM staff WHERE salon_id = ? AND is_active = 1`, [salonId])
+        pool.query(`SELECT COUNT(*) as val FROM staff WHERE salon_id = ? AND status = 'active'`, [salonId])
       ]);
 
       const totalRevenue = parseFloat(revenue[0]?.val || 0);
