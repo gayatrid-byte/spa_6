@@ -728,10 +728,7 @@ function renderCombosView() {
       </div>
       
       <div class="tabs">
-        <div class="tab-header">
-          <button class="tab-btn active" data-tab="active">Active Combos (${activeCombos.length})</button>
-          <button class="tab-btn" data-tab="inactive">Inactive Combos (${inactiveCombos.length})</button>
-        </div>
+      
         <div class="tab-content">
           <div class="tab-pane active" id="tab-combo-active">
             ${renderCombosTable(activeCombos)}
@@ -835,11 +832,6 @@ function renderCombosTable(combosList) {
                 <button class="btn btn-sm btn-danger" onclick="servicesModule.deleteCombo(${combo.id})"
                   title="Delete combo">
                   <i class="fas fa-trash"></i>
-                </button>
-                <button class="btn btn-sm btn-${combo.is_active ? 'warning' : 'success'}" 
-                  onclick="servicesModule.toggleComboStatus(${combo.id}, ${!combo.is_active})"
-                  title="${combo.is_active ? 'Deactivate' : 'Activate'} combo">
-                  <i class="fas fa-power-off"></i>
                 </button>
               </div>
             </div>

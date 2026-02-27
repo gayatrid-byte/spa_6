@@ -347,11 +347,7 @@ const utils = {
       btn.style.alignItems = 'center';
       btn.style.gap = '8px';
       btn.style.padding = '8px';
-      btn.innerHTML = `
-        <svg class="toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5"/>
-        </svg>
-      `;
+  
 
       function refresh() {
         if (document.body.classList.contains('theme-night')) {
@@ -506,20 +502,20 @@ const utils = {
   }
 
   function emojiToSvgMap(name) {
-    const stroke = 'url(#brand-gradient)';
-    const common = `stroke="${stroke}" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" fill="none"`;
+    const stroke = 'currentColor';
+    const common = 'stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" fill="none"';
     const icons = {
-      '🎯': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><path d="M12 7v5l3 3" ${common}></path></svg>`,
-      '⏳': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M6 2h12" ${common}></path><path d="M6 22h12" ${common}></path><path d="M8 6h8v2a4 4 0 01-4 4 4 4 0 01-4-4V6z" ${common}></path></svg>`,
-      '📅': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" ${common}></rect><path d="M16 3v4M8 3v4" ${common}></path></svg>`,
-      '💰': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M12 1v2" ${common}></path><rect x="4" y="5" width="16" height="14" rx="2" ${common}></rect><path d="M9 10a3 3 0 006 0" ${common}></path></svg>`,
-      '👑': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M2 7l6 6 4-4 10 10" ${common}></path></svg>`,
-      '📊': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M3 3v18" ${common}></path><rect x="7" y="10" width="3" height="11" ${common}></rect><rect x="12" y="6" width="3" height="15" ${common}></rect><rect x="17" y="2" width="3" height="19" ${common}></rect></svg>`,
-      '🧾': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M7 3h10v18H7z" ${common}></path><path d="M9 7h6M9 11h6M9 15h4" ${common}></path></svg>`,
-      '✅': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><path d="M9 12l2 2 4-4" ${common}></path></svg>`,
-      '❌': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><path d="M15 9l-6 6M9 9l6 6" ${common}></path></svg>`,
-      '🔔': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" ${common}></path></svg>`,
-      '🏆': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M8 21h8M12 17V7" ${common}></path><path d="M7 3h10l-1 6a4 4 0 01-8 0L7 3z" ${common}></path></svg>`
+      'target': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><circle cx="12" cy="12" r="5" ${common}></circle><circle cx="12" cy="12" r="2" ${common}></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2" ${common}></path></svg>`,
+      'clock': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><path d="M12 7v5l3 3" ${common}></path></svg>`,
+      'calendar': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" ${common}></rect><path d="M16 3v4M8 3v4" ${common}></path></svg>`,
+      'wallet': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2" ${common}></rect><path d="M16 11a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" ${common}></path></svg>`,
+      'crown': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M2 7l6 6 4-4 10 10" ${common}></path></svg>`,
+      'chart': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="8" ${common}></rect><rect x="9" y="8" width="4" height="12" ${common}></rect><rect x="15" y="4" width="4" height="16" ${common}></rect></svg>`,
+      'receipt': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ${common}></rect><path d="M8 6h8M8 10h8M8 14h6" ${common}></path></svg>`,
+      'check-circle': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><path d="M9 12l2 2 4-4" ${common}></path></svg>`,
+      'x-circle': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" ${common}></circle><path d="M15 9l-6 6M9 9l6 6" ${common}></path></svg>`,
+      'bell': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" ${common}></path></svg>`,
+      'trophy': `<svg class="inline-icon" width="20" height="20" viewBox="0 0 24 24"><path d="M8 21h8M12 17V7" ${common}></path><path d="M7 3h10l-1 6a4 4 0 01-8 0L7 3z" ${common}></path></svg>`
     };
     return icons[name] || null;
   }

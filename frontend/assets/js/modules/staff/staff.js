@@ -6,7 +6,7 @@ let currentStaffId = null;
 export async function render(container) {
   const currentUser = auth.getCurrentUser();
   const userRole = currentUser?.role;
-  
+
   // Check permissions
   if (!permissions.can(userRole, 'viewStaff') && !permissions.can(userRole, 'manageStaff')) {
     container.innerHTML = `
@@ -17,19 +17,19 @@ export async function render(container) {
     `;
     return;
   }
-  
+
   try {
     // Load initial data
     const [staffData, dashboardData] = await Promise.all([
       api.staff.getAll(),
       api.staff.getDashboard()
     ]);
-    
+
     staffList = staffData;
-    
+
     // Determine if this is staff viewing own profile or manager viewing all
     const isStaffSelfService = userRole === 'staff' && !permissions.can(userRole, 'manageStaff');
-    
+
     if (isStaffSelfService) {
       // Staff self-service view
       await renderStaffSelfService(container, currentUser);
@@ -37,7 +37,7 @@ export async function render(container) {
       // Manager/Admin view
       await renderStaffManagement(container, dashboardData);
     }
-    
+
   } catch (error) {
     console.error('Error loading staff module:', error);
     container.innerHTML = `
@@ -51,7 +51,7 @@ export async function render(container) {
 
 async function renderStaffManagement(container, dashboardData) {
   const today = new Date().toISOString().split('T')[0];
-  
+
   container.innerHTML = `
     <div class="staff-management-container">
       <!-- Staff Dashboard Header -->
@@ -72,82 +72,77 @@ async function renderStaffManagement(container, dashboardData) {
       </div>
     </div>
   `;
-  
+
   // Attach event listeners
   attachStaffManagementListeners(container);
 }
 function renderStaffDashboard(dashboardData, today) {
   const totalStaff = dashboardData.totalStaff || 0;
   const todayAttendance = dashboardData.todayAttendance || { present: 0, absent: 0, late: 0 };
-  
+
   // Calculate absent staff
   const absentCount = totalStaff - (todayAttendance.present || 0);
-  
+
   return `
     <div class="staff-dashboard">
       <div class="dashboard-cards">
         <!-- Overview Cards -->
         <div class="card clickable-card" onclick="staffModule.viewAllStaff()" title="Click to view all staff">
-          <div class="card-icon">👥</div>
+          <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
           <div class="card-title">Total Staff</div>
           <div class="card-value">${totalStaff}</div>
           <div class="card-subtitle">Active employees</div>
         </div>
-        
         <div class="card clickable-card" onclick="staffModule.viewTodayAttendance()" title="Click to view present staff">
-          <div class="card-icon">✅</div>
+          <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
           <div class="card-title">Present Today</div>
           <div class="card-value">${todayAttendance.present || 0}</div>
           <div class="card-subtitle">${todayAttendance.present || 0}/${totalStaff} staff</div>
         </div>
-        
         <div class="card clickable-card" onclick="staffModule.viewAbsentStaff()" title="Click to view absent staff">
-          <div class="card-icon">❌</div>
+          <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
           <div class="card-title">Absent Today</div>
           <div class="card-value">${absentCount}</div>
           <div class="card-subtitle">Staff absent</div>
         </div>
-        
         <div class="card clickable-card" onclick="staffModule.takeAttendance()" title="Click to mark attendance">
-          <div class="card-icon">📝</div>
+          <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 6h8M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></div>
           <div class="card-title">Take Attendance</div>
           <div class="card-subtitle">Click to mark today's attendance</div>
         </div>
       </div>
-      
       <!-- Quick Actions -->
       <div class="card mt-3">
-        <h4>⚡ Quick Actions</h4>
+        <h4><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><path d="M8 21h8M12 17V7" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7 3h10l-1 6a4 4 0 01-8 0L7 3z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Quick Actions</h4>
         <div class="d-flex gap-2 flex-wrap mt-2">
           <button class="btn btn-primary" onclick="staffModule.takeAttendance()" title="Mark attendance for all staff">
-            📝 Take Today's Attendance
+            <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 6h8M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Take Today's Attendance
           </button>
           <button class="btn btn-outline" onclick="staffModule.viewAllStaff()" title="Show complete staff list with actions">
-            👥 View All Staff
+            <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> View All Staff
           </button>
           <button class="btn btn-outline" onclick="staffModule.viewAttendance()" title="Show today's attendance summary">
-            ⏰ View Attendance
+            <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> View Attendance
           </button>
           <button class="btn btn-outline" onclick="staffModule.generateAttendanceReport()" title="Create attendance reports">
-            📊 Generate Report
+            <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><rect x="3" y="12" width="4" height="8" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="9" y="8" width="4" height="12" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="15" y="4" width="4" height="16" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Generate Report
           </button>
         </div>
       </div>
-      
       <!-- Today's Staff Summary -->
       <div class="card mt-3">
-        <h4>📋 Today's Staff Summary</h4>
+        <h4><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 6h8M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Today's Staff Summary</h4>
         <div class="mt-2">
           <p><strong>Date: ${utils.formatDate(today)}</strong></p>
           <div class="d-flex gap-3">
             <span class="badge badge-success clickable" onclick="staffModule.viewTodayAttendance()" title="Click to view present staff">
-              ✅ Present: ${todayAttendance.present || 0}
+              <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Present: ${todayAttendance.present || 0}
             </span>
             <span class="badge badge-danger clickable" onclick="staffModule.viewAbsentStaff()" title="Click to view absent staff">
-              ❌ Absent: ${absentCount}
+              <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Absent: ${absentCount}
             </span>
             <span class="badge badge-warning clickable" onclick="staffModule.viewLateStaff()" title="Click to view late staff">
-              ⏰ Late: ${todayAttendance.late || 0}
+              <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Late: ${todayAttendance.late || 0}
             </span>
           </div>
           
@@ -169,10 +164,10 @@ async function renderAllStaff(container) {
   try {
     const staff = await api.staff.getAll();
     staffList = staff;
-    
+
     const contentArea = container.querySelector('#staffContentArea');
     if (!contentArea) return;
-    
+
     contentArea.innerHTML = `
       <div class="card">
         <div class="table-header">
@@ -203,7 +198,7 @@ async function renderAllStaff(container) {
         </div>
       </div>
     `;
-    
+
     // Attach listeners for this view
     attachAllStaffListeners(contentArea);
   } catch (error) {
@@ -216,10 +211,10 @@ function renderStaffTable(staffList) {
   if (staffList.length === 0) {
     return '<p class="text-center">No staff members found</p>';
   }
-  
+
   const currentUser = auth.getCurrentUser();
   const canDelete = permissions.can(currentUser?.role, 'deleteStaff');
-  
+
   return `
     <table>
       <thead>
@@ -311,7 +306,7 @@ function attachStaffManagementListeners(container) {
       }
     });
   }
-  
+
   // All Staff button
   const allStaffBtn = container.querySelector('#viewAllStaffBtn');
   if (allStaffBtn) {
@@ -319,7 +314,7 @@ function attachStaffManagementListeners(container) {
       await renderAllStaff(container);
     });
   }
-  
+
   // Add Staff button
   const addStaffBtn = container.querySelector('#addStaffBtn');
   if (addStaffBtn) {
@@ -333,7 +328,7 @@ function attachAllStaffListeners(container) {
   // Search input
   const searchInput = container.querySelector('#searchStaff');
   if (searchInput) {
-    searchInput.addEventListener('input', utils.debounce(async function(e) {
+    searchInput.addEventListener('input', utils.debounce(async function (e) {
       const query = e.target.value;
       try {
         const filtered = await api.staff.getAll({ search: query });
@@ -347,11 +342,11 @@ function attachAllStaffListeners(container) {
       }
     }, 500));
   }
-  
+
   // Filter status
   const filterStatus = container.querySelector('#filterStatus');
   if (filterStatus) {
-    filterStatus.addEventListener('change', async function() {
+    filterStatus.addEventListener('change', async function () {
       const status = this.value;
       try {
         const filtered = await api.staff.getAll({ status: status });
@@ -365,11 +360,11 @@ function attachAllStaffListeners(container) {
       }
     });
   }
-  
+
   // Filter department
   const filterDept = container.querySelector('#filterDepartment');
   if (filterDept) {
-    filterDept.addEventListener('change', async function() {
+    filterDept.addEventListener('change', async function () {
       const department = this.value;
       try {
         const filtered = await api.staff.getAll({ department: department });
@@ -383,7 +378,7 @@ function attachAllStaffListeners(container) {
       }
     });
   }
-  
+
   // Add Staff button 2
   const addStaffBtn2 = container.querySelector('#addStaffBtn2');
   if (addStaffBtn2) {
@@ -407,7 +402,7 @@ async function showStaffForm(staff = null) {
 
   const dobValue = formatDateForInput(staff?.date_of_birth);
   const joiningValue = formatDateForInput(staff?.joining_date) || utils.getTodayDate();
-  
+
   const formHTML = `
     <div class="staff-form-container">
       <h4 class="mb-3">${isEdit ? '✏️ Edit Staff' : '➕ Add New Staff'}</h4>
@@ -601,11 +596,11 @@ async function showStaffForm(staff = null) {
       </form>
     </div>
   `;
-  
 
-  
+
+
   window.appUtils.showModal(isEdit ? 'Edit Staff' : 'Add New Staff', formHTML, { width: '800px' });
-  
+
   // Add CSS for better form display
   const style = document.createElement('style');
   style.textContent = `
@@ -662,12 +657,12 @@ async function showStaffForm(staff = null) {
     }
   `;
   document.head.appendChild(style);
-  
+
   // Remove any existing event listeners
   const saveBtn = document.getElementById('saveStaffBtn');
   const cancelBtn = document.getElementById('cancelStaffBtn');
   const form = document.getElementById('staffForm');
-  
+
   // Clone and replace buttons to remove old listeners
   if (saveBtn) {
     const newSaveBtn = saveBtn.cloneNode(true);
@@ -677,19 +672,19 @@ async function showStaffForm(staff = null) {
     const newCancelBtn = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
   }
-  
+
   // Attach new event listeners
-  document.getElementById('saveStaffBtn').addEventListener('click', async function(e) {
+  document.getElementById('saveStaffBtn').addEventListener('click', async function (e) {
     e.preventDefault();
     await handleStaffSave(staff, isEdit);
   });
-  
-  document.getElementById('cancelStaffBtn').addEventListener('click', function() {
+
+  document.getElementById('cancelStaffBtn').addEventListener('click', function () {
     window.appUtils.closeModal();
   });
-  
+
   // Also allow form submit with Enter key (will still call our save function)
-  form.addEventListener('submit', function(e) {
+  form.addEventListener('submit', function (e) {
     e.preventDefault();
     document.getElementById('saveStaffBtn').click();
   });
@@ -698,7 +693,7 @@ async function showStaffForm(staff = null) {
 async function handleStaffSave(staff, isEdit) {
   // Get current user
   const currentUser = auth.getCurrentUser();
-  
+
   // Build form data
   const formData = {
     name: document.getElementById('staffName').value.trim(),
@@ -721,45 +716,45 @@ async function handleStaffSave(staff, isEdit) {
     salon_id: currentUser.salon_id,
     created_by: currentUser.id
   };
-  
+
   // Basic validation
   if (!formData.name || formData.name.length < 2) {
     utils.showToast('Please enter a valid full name (min 2 characters)', 'error');
     document.getElementById('staffName').focus();
     return;
   }
-  
+
   if (!formData.phone || !/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
     utils.showToast('Please enter a valid 10-digit phone number', 'error');
     document.getElementById('staffPhone').focus();
     return;
   }
-  
+
   if (!formData.joining_date) {
     utils.showToast('Please select a joining date', 'error');
     document.getElementById('staffJoiningDate').focus();
     return;
   }
-  
+
   if (!formData.department) {
     utils.showToast('Please select a department', 'error');
     document.getElementById('staffDepartment').focus();
     return;
   }
-  
+
   if (!formData.designation || formData.designation.length < 2) {
     utils.showToast('Please enter a valid designation', 'error');
     document.getElementById('staffDesignation').focus();
     return;
   }
-  
+
   try {
     // Show loading
     const saveBtn = document.getElementById('saveStaffBtn');
     const originalText = saveBtn.innerHTML;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (isEdit ? 'Updating...' : 'Creating...');
     saveBtn.disabled = true;
-    
+
     if (isEdit) {
       await api.staff.update(staff.id, formData);
       utils.showToast('✅ Staff updated successfully', 'success');
@@ -767,17 +762,17 @@ async function handleStaffSave(staff, isEdit) {
       await api.staff.create(formData);
       utils.showToast('✅ Staff created successfully', 'success');
     }
-    
+
     // Close modal on successful save
     window.appUtils.closeModal();
-    
+
     // Refresh the staff list
     const contentArea = document.getElementById('contentArea');
     await render(contentArea);
-    
+
   } catch (error) {
     console.error('Save error:', error);
-    
+
     // User-friendly error messages
     let errorMessage = 'Operation failed. Please try again.';
     if (error.message.includes('Duplicate entry')) {
@@ -786,12 +781,12 @@ async function handleStaffSave(staff, isEdit) {
       // If created_by/updated_by columns don't exist, remove them and retry
       delete formData.created_by;
       delete formData.updated_by;
-      
+
       // Retry without audit fields
       try {
         const retryBtn = document.getElementById('saveStaffBtn');
         retryBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Retrying...';
-        
+
         if (isEdit) {
           await api.staff.update(staff.id, formData);
           utils.showToast('✅ Staff updated successfully', 'success');
@@ -813,14 +808,14 @@ async function handleStaffSave(staff, isEdit) {
     } else {
       errorMessage = error.message || 'Operation failed. Please try again.';
     }
-    
+
     utils.showToast(`❌ ${errorMessage}`, 'error');
-    
+
     // Re-enable button
     const saveBtn = document.getElementById('saveStaffBtn');
     saveBtn.innerHTML = originalText;
     saveBtn.disabled = false;
-    
+
     // Do NOT close modal on error - let user fix the form
   }
 }
@@ -831,10 +826,10 @@ async function handleStaffSave(staff, isEdit) {
 // Export functions for global access
 window.staffModule = {
   // Staff Management
-  viewStaff: async function(id) {
+  viewStaff: async function (id) {
     try {
       const staff = await api.staff.getById(id);
-      
+
       // Simple view modal for staff details
       const html = `
         <div style="max-height: 400px; overflow-y: auto;">
@@ -876,14 +871,14 @@ window.staffModule = {
           </div>
         </div>
       `;
-      
+
       window.appUtils.showModal('Staff Details', html);
     } catch (error) {
       utils.showToast(error.message || 'Failed to load staff details', 'error');
     }
   },
-  
-  editStaff: async function(id) {
+
+  editStaff: async function (id) {
     try {
       const staff = await api.staff.getById(id);
       showStaffForm(staff);
@@ -891,20 +886,20 @@ window.staffModule = {
       utils.showToast('Failed to load staff details', 'error');
     }
   },
-  
-  deleteStaff: async function(id) {
+
+  deleteStaff: async function (id) {
     // Check permission
     const currentUser = auth.getCurrentUser();
     if (!permissions.can(currentUser.role, 'deleteStaff')) {
       utils.showToast('You do not have permission to delete staff', 'error');
       return;
     }
-    
+
     if (confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) {
       try {
         await api.staff.delete(id);
         utils.showToast('Staff deleted successfully', 'success');
-        
+
         // Refresh the staff list
         const contentArea = document.getElementById('contentArea');
         await render(contentArea);
@@ -913,120 +908,119 @@ window.staffModule = {
       }
     }
   },
-  
-  viewAllStaff: async function() {
+
+  viewAllStaff: async function () {
     const container = document.querySelector('.staff-management-container');
     if (container) {
       await renderAllStaff(container);
     }
   },
-  
+
   // ==================== ATTENDANCE FUNCTIONS ====================
-  
-    takeAttendance: async function() {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const attendance = await api.staff.getAttendance({ date: today });
-      const allStaff = await api.staff.getAll();
-      
-      let html = `
-        <h4>📝 Take Today's Attendance - ${utils.formatDate(today)}</h4>
-        <p class="text-muted">Mark attendance for all staff: Present/Absent/Late/Half Day</p>
+
+  takeAttendance: async function () {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const attendance = await api.staff.getAttendance({ date: today });
+    const allStaff = await api.staff.getAll();
+
+    let html = `
+      <h4>📝 Take Today's Attendance - ${utils.formatDate(today)}</h4>
+      <p class="text-muted">Mark attendance for all staff: Present/Absent/Late/Half Day</p>
+    `;
+
+    if (allStaff.length === 0) {
+      html += '<p class="text-center">No staff members found</p>';
+    } else {
+      html += `
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="attendance-table">
+            <thead>
+              <tr>
+                <th>Staff Member</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allStaff.map(staff => {
+        const todayRecord = attendance.find(a => a.staff_id === staff.id);
+        return `
+                  <tr>
+                    <td>
+                      <strong>${staff.name}</strong><br>
+                      <small class="text-muted">${staff.employee_id}</small>
+                    </td>
+                    <td>${staff.department}</td>
+                    <td>
+                      <select id="status_${staff.id}" class="form-control form-control-sm">
+                        <option value="present" selected>Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
+                        <option value="half_day">Half Day</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input type="time" id="clockin_${staff.id}" class="form-control form-control-sm" 
+                        value="${todayRecord?.clock_in || '09:00'}" title="Set clock in time">
+                    </td>
+                    <td>
+                      <input type="time" id="clockout_${staff.id}" class="form-control form-control-sm" 
+                        value="${todayRecord?.clock_out || '18:00'}" title="Set clock out time">
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-success" onclick="staffModule.saveAttendance(${staff.id})" 
+                        title="Save this staff's attendance">
+                        <i class="fas fa-save"></i> Save
+                      </button>
+                    </td>
+                  </tr>
+                `;
+      }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-primary" onclick="staffModule.saveAllAttendance()" 
+            title="Save attendance for all staff at once">
+            <i class="fas fa-save"></i> Save All Attendance
+          </button>
+          <button class="btn btn-outline" onclick="window.appUtils.closeModal()">
+            <i class="fas fa-times"></i> Close
+          </button>
+        </div>
+        <div class="alert alert-info mt-3">
+          <i class="fas fa-info-circle"></i> <strong>Instructions:</strong>
+          <ul class="mb-0 mt-2">
+            <li>Select status for each staff: <strong>Present/Absent/Late/Half Day</strong></li>
+            <li>Set Clock In/Out times for present staff</li>
+            <li><strong>Save single staff:</strong> Click Save button next to their name</li>
+            <li><strong>Save all:</strong> Click "Save All Attendance" button at bottom</li>
+          </ul>
+        </div>
       `;
-      
-      if (allStaff.length === 0) {
-        html += '<p class="text-center">No staff members found</p>';
-      } else {
-        html += `
-          <div style="max-height: 400px; overflow-y: auto;">
-            <table class="attendance-table">
-              <thead>
-                <tr>
-                  <th>Staff Member</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Clock In</th>
-                  <th>Clock Out</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${allStaff.map(staff => {
-                  const todayRecord = attendance.find(a => a.staff_id === staff.id);
-                  return `
-                    <tr>
-                      <td>
-                        <strong>${staff.name}</strong><br>
-                        <small class="text-muted">${staff.employee_id}</small>
-                      </td>
-                      <td>${staff.department}</td>
-                      <td>
-                        <select id="status_${staff.id}" class="form-control form-control-sm" 
-                          title="Select attendance status">
-                          <option value="present" ${todayRecord?.attendance_status === 'present' ? 'selected' : ''}>Present</option>
-                          <option value="absent" ${!todayRecord?.attendance_status || todayRecord.attendance_status === 'absent' ? 'selected' : ''}>Absent</option>
-                          <option value="late" ${todayRecord?.attendance_status === 'late' ? 'selected' : ''}>Late</option>
-                          <option value="half_day" ${todayRecord?.attendance_status === 'half_day' ? 'selected' : ''}>Half Day</option>
-                        </select>
-                      </td>
-                      <td>
-                        <input type="time" id="clockin_${staff.id}" class="form-control form-control-sm" 
-                          value="${todayRecord?.clock_in || '09:00'}" title="Set clock in time">
-                      </td>
-                      <td>
-                        <input type="time" id="clockout_${staff.id}" class="form-control form-control-sm" 
-                          value="${todayRecord?.clock_out || '18:00'}" title="Set clock out time">
-                      </td>
-                      <td>
-                        <button class="btn btn-sm btn-success" onclick="staffModule.saveAttendance(${staff.id})" 
-                          title="Save this staff's attendance">
-                          <i class="fas fa-save"></i> Save
-                        </button>
-                      </td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-          <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-primary" onclick="staffModule.saveAllAttendance()" 
-              title="Save attendance for all staff at once">
-              <i class="fas fa-save"></i> Save All Attendance
-            </button>
-            <button class="btn btn-outline" onclick="window.appUtils.closeModal()">
-              <i class="fas fa-times"></i> Close
-            </button>
-          </div>
-          <div class="alert alert-info mt-3">
-            <i class="fas fa-info-circle"></i> <strong>Instructions:</strong>
-            <ul class="mb-0 mt-2">
-              <li>Select status for each staff: <strong>Present/Absent/Late/Half Day</strong></li>
-              <li>Set Clock In/Out times for present staff</li>
-              <li><strong>Save single staff:</strong> Click Save button next to their name</li>
-              <li><strong>Save all:</strong> Click "Save All Attendance" button at bottom</li>
-            </ul>
-          </div>
-        `;
-      }
-      
-      window.appUtils.showModal('Take Attendance', html);
-    } catch (error) {
-      utils.showToast('Error loading attendance data: ' + error.message, 'error');
     }
-  },
-  
-  saveAttendance: async function(staffId) {
+
+    window.appUtils.showModal('Take Attendance', html);
+  } catch (error) {
+    utils.showToast('Error loading attendance data: ' + error.message, 'error');
+  }
+},
+
+  saveAttendance: async function (staffId) {
     const today = new Date().toISOString().split('T')[0];
     const status = document.getElementById(`status_${staffId}`)?.value;
     const clockIn = document.getElementById(`clockin_${staffId}`)?.value;
     const clockOut = document.getElementById(`clockout_${staffId}`)?.value;
-    
+
     if (!status) {
       utils.showToast('Please select status for staff', 'error');
       return;
     }
-    
+
     try {
       // Build attendance data
       const attendanceData = {
@@ -1036,10 +1030,10 @@ window.staffModule = {
         clock_in: status === 'present' || status === 'late' ? (clockIn || '09:00') : null,
         clock_out: status === 'present' ? (clockOut || '18:00') : null
       };
-      
+
       // Check if attendance exists
       const existingAttendance = await api.staff.getAttendance({ staff_id: staffId, date: today });
-      
+
       if (existingAttendance.length > 0) {
         // Update existing
         await api.staff.updateAttendance(existingAttendance[0].id, attendanceData);
@@ -1047,25 +1041,25 @@ window.staffModule = {
         // Create new
         await api.staff.createAttendance(attendanceData);
       }
-      
+
       utils.showToast('Attendance saved successfully', 'success');
     } catch (error) {
       utils.showToast('Error saving attendance: ' + error.message, 'error');
     }
   },
-  
-  saveAllAttendance: async function() {
+
+  saveAllAttendance: async function () {
     const today = new Date().toISOString().split('T')[0];
     const allStaff = await api.staff.getAll();
     const errors = [];
     let savedCount = 0;
-    
+
     for (const staff of allStaff) {
       try {
         const status = document.getElementById(`status_${staff.id}`)?.value;
         const clockIn = document.getElementById(`clockin_${staff.id}`)?.value;
         const clockOut = document.getElementById(`clockout_${staff.id}`)?.value;
-        
+
         if (status) {
           const attendanceData = {
             staff_id: staff.id,
@@ -1074,27 +1068,27 @@ window.staffModule = {
             clock_in: status === 'present' || status === 'late' ? (clockIn || '09:00') : null,
             clock_out: status === 'present' ? (clockOut || '18:00') : null
           };
-          
+
           // Check if attendance exists
           const existingAttendance = await api.staff.getAttendance({ staff_id: staff.id, date: today });
-          
+
           if (existingAttendance.length > 0) {
             await api.staff.updateAttendance(existingAttendance[0].id, attendanceData);
           } else {
             await api.staff.createAttendance(attendanceData);
           }
-          
+
           savedCount++;
         }
       } catch (error) {
         errors.push(`${staff.name}: ${error.message}`);
       }
     }
-    
+
     if (errors.length === 0) {
       utils.showToast(`${savedCount} attendance records saved successfully`, 'success');
       window.appUtils.closeModal();
-      
+
       // Refresh dashboard
       const contentArea = document.getElementById('contentArea');
       await render(contentArea);
@@ -1102,16 +1096,16 @@ window.staffModule = {
       utils.showToast(`Saved ${savedCount} records. Errors: ${errors.join(', ')}`, 'warning');
     }
   },
-  
+
   // ==================== VIEW ATTENDANCE FUNCTIONS ====================
-  
-  viewTodayAttendance: async function() {
+
+  viewTodayAttendance: async function () {
     try {
       const today = new Date().toISOString().split('T')[0];
       const attendance = await api.staff.getAttendance({ date: today });
-      
+
       let html = `<h4>⏰ Today's Attendance - ${utils.formatDate(today)}</h4>`;
-      
+
       if (attendance.length === 0) {
         html += '<p class="text-center">No attendance records found for today</p>';
       } else {
@@ -1156,26 +1150,26 @@ window.staffModule = {
           </div>
         `;
       }
-      
+
       window.appUtils.showModal('Today\'s Attendance', html);
     } catch (error) {
       utils.showToast('Failed to load attendance: ' + error.message, 'error');
     }
   },
-  
-  viewAttendance: async function() {
+
+  viewAttendance: async function () {
     // Default to today's attendance
     await this.viewTodayAttendance();
   },
-  
-  viewStaffAttendance: async function(staffId) {
+
+  viewStaffAttendance: async function (staffId) {
     try {
       const today = new Date().toISOString().split('T')[0];
       const staff = await api.staff.getById(staffId);
       const attendance = await api.staff.getAttendance({ staff_id: staffId, date: today });
-      
+
       let html = `<h4>⏰ ${staff.name}'s Today's Attendance</h4>`;
-      
+
       if (attendance.length === 0) {
         html += '<p class="text-center">No attendance record found for today</p>';
       } else {
@@ -1200,20 +1194,20 @@ window.staffModule = {
           </div>
         `;
       }
-      
+
       window.appUtils.showModal('Staff Attendance', html);
     } catch (error) {
       utils.showToast('Failed to load staff attendance: ' + error.message, 'error');
     }
   },
-  
-  viewLateStaff: async function() {
+
+  viewLateStaff: async function () {
     try {
       const today = new Date().toISOString().split('T')[0];
       const attendance = await api.staff.getAttendance({ date: today, status: 'late' });
-      
+
       let html = `<h4>⏰ Late Staff - ${utils.formatDate(today)}</h4>`;
-      
+
       if (attendance.length === 0) {
         html += '<p class="text-center">No late staff today</p>';
       } else {
@@ -1247,25 +1241,25 @@ window.staffModule = {
           </div>
         `;
       }
-      
+
       html += '<div class="d-flex gap-2 mt-3"><button class="btn btn-outline" onclick="window.appUtils.closeModal()">Close</button></div>';
-      
+
       window.appUtils.showModal('Late Staff', html);
     } catch (error) {
       utils.showToast('Error loading late staff: ' + error.message, 'error');
     }
   },
-  
-  updateAttendanceRecord: async function(id) {
+
+  updateAttendanceRecord: async function (id) {
     try {
       const attendance = await api.staff.getAttendance({});
       const record = attendance.find(a => a.id === id);
-      
+
       if (!record) {
         utils.showToast('Attendance record not found', 'error');
         return;
       }
-      
+
       const html = `
         <h4>Edit Attendance Record</h4>
         <form id="editAttendanceForm">
@@ -1309,24 +1303,24 @@ window.staffModule = {
           </div>
         </form>
       `;
-      
+
       window.appUtils.showModal('Edit Attendance', html);
     } catch (error) {
       utils.showToast('Error loading attendance record: ' + error.message, 'error');
     }
   },
-  
-  saveAttendanceRecord: async function(id) {
+
+  saveAttendanceRecord: async function (id) {
     const status = document.getElementById('editStatus')?.value;
     const clockIn = document.getElementById('editClockIn')?.value;
     const clockOut = document.getElementById('editClockOut')?.value;
     const notes = document.getElementById('editNotes')?.value;
-    
+
     if (!status) {
       utils.showToast('Status is required', 'error');
       return;
     }
-    
+
     try {
       await api.staff.updateAttendance(id, {
         attendance_status: status,
@@ -1334,33 +1328,33 @@ window.staffModule = {
         clock_out: status === 'present' ? (clockOut || null) : null,
         notes: notes || ''
       });
-      
+
       utils.showToast('Attendance record updated successfully', 'success');
       window.appUtils.closeModal();
     } catch (error) {
       utils.showToast('Error saving attendance: ' + error.message, 'error');
     }
   },
-  
+
   // ==================== LEAVE FUNCTIONS ====================
-  
-  viewAbsentStaff: async function() {
+
+  viewAbsentStaff: async function () {
     try {
       const today = new Date().toISOString().split('T')[0];
       const allStaff = await api.staff.getAll();
       const attendance = await api.staff.getAttendance({ date: today });
-      
+
       // Find staff who are absent (not present and not late)
       const presentStaffIds = attendance
         .filter(a => a.attendance_status === 'present' || a.attendance_status === 'late')
         .map(a => a.staff_id);
-      
-      const absentStaff = allStaff.filter(staff => 
+
+      const absentStaff = allStaff.filter(staff =>
         !presentStaffIds.includes(staff.id)
       );
-      
+
       let html = `<h4>❌ Absent Staff - ${utils.formatDate(today)}</h4>`;
-      
+
       if (absentStaff.length === 0) {
         html += '<p class="text-center">No absent staff today</p>';
       } else {
@@ -1393,27 +1387,27 @@ window.staffModule = {
           </div>
         `;
       }
-      
+
       html += '<div class="d-flex gap-2 mt-3"><button class="btn btn-outline" onclick="window.appUtils.closeModal()">Close</button></div>';
-      
+
       window.appUtils.showModal('Absent Staff', html);
     } catch (error) {
       utils.showToast('Error loading absent staff: ' + error.message, 'error');
     }
   },
-  
+
   // ==================== SCHEDULE FUNCTIONS ====================
-  
-  viewSchedule: async function() {
+
+  viewSchedule: async function () {
     try {
       const today = new Date();
       const currentWeekStart = new Date(today.setDate(today.getDate() - today.getDay() + 1));
       const weekStartStr = currentWeekStart.toISOString().split('T')[0];
-      
+
       const schedule = await api.staff.getSchedule({ week_start_date: weekStartStr });
-      
+
       let html = `<h4>📅 Staff Schedule - Week of ${utils.formatDate(weekStartStr)}</h4>`;
-      
+
       if (schedule.length === 0) {
         html += `
           <p class="text-center">No schedule published for this week</p>
@@ -1441,16 +1435,16 @@ window.staffModule = {
               </thead>
               <tbody>
                 ${schedule.map(s => {
-                  try {
-                    const monday = s.monday_schedule ? JSON.parse(s.monday_schedule) : {};
-                    const tuesday = s.tuesday_schedule ? JSON.parse(s.tuesday_schedule) : {};
-                    const wednesday = s.wednesday_schedule ? JSON.parse(s.wednesday_schedule) : {};
-                    const thursday = s.thursday_schedule ? JSON.parse(s.thursday_schedule) : {};
-                    const friday = s.friday_schedule ? JSON.parse(s.friday_schedule) : {};
-                    const saturday = s.saturday_schedule ? JSON.parse(s.saturday_schedule) : {};
-                    const sunday = s.sunday_schedule ? JSON.parse(s.sunday_schedule) : {};
-                    
-                    return `
+          try {
+            const monday = s.monday_schedule ? JSON.parse(s.monday_schedule) : {};
+            const tuesday = s.tuesday_schedule ? JSON.parse(s.tuesday_schedule) : {};
+            const wednesday = s.wednesday_schedule ? JSON.parse(s.wednesday_schedule) : {};
+            const thursday = s.thursday_schedule ? JSON.parse(s.thursday_schedule) : {};
+            const friday = s.friday_schedule ? JSON.parse(s.friday_schedule) : {};
+            const saturday = s.saturday_schedule ? JSON.parse(s.saturday_schedule) : {};
+            const sunday = s.sunday_schedule ? JSON.parse(s.sunday_schedule) : {};
+
+            return `
                       <tr>
                         <td><strong>${s.name}</strong><br><small>${s.employee_id}</small></td>
                         <td>${monday.shift || 'Off'}<br>${monday.start_time || ''} ${monday.end_time || ''}</td>
@@ -1462,30 +1456,30 @@ window.staffModule = {
                         <td>${sunday.shift || 'Off'}<br>${sunday.start_time || ''} ${sunday.end_time || ''}</td>
                       </tr>
                     `;
-                  } catch (e) {
-                    return `
+          } catch (e) {
+            return `
                       <tr>
                         <td><strong>${s.name}</strong></td>
                         <td colspan="7" class="text-center text-muted">Schedule data error</td>
                       </tr>
                     `;
-                  }
-                }).join('')}
+          }
+        }).join('')}
               </tbody>
             </table>
           </div>
         `;
       }
-      
+
       html += '<div class="d-flex gap-2 mt-3"><button class="btn btn-outline" onclick="window.appUtils.closeModal()">Close</button></div>';
-      
+
       window.appUtils.showModal('Staff Schedule', html);
     } catch (error) {
       utils.showToast('Error loading schedule: ' + error.message, 'error');
     }
   },
-  
-  createSchedule: async function() {
+
+  createSchedule: async function () {
     const html = `
       <h4>Create Weekly Schedule</h4>
       <p class="text-muted">This feature is under development</p>
@@ -1497,20 +1491,20 @@ window.staffModule = {
     `;
     window.appUtils.showModal('Create Schedule', html);
   },
-  
+
   // ==================== REPORT FUNCTIONS ====================
-  
-    // ==================== REPORT FUNCTIONS ====================
 
-// ==================== REPORT FUNCTIONS ====================
+  // ==================== REPORT FUNCTIONS ====================
 
-generateAttendanceReport: async function() {
-  try {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    const html = `
+  // ==================== REPORT FUNCTIONS ====================
+
+  generateAttendanceReport: async function () {
+    try {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      const html = `
       <h4>📊 Generate Attendance Report</h4>
       <form id="attendanceReportForm">
         <div class="form-group">
@@ -1575,115 +1569,115 @@ generateAttendanceReport: async function() {
         </div>
       </form>
     `;
-    
-    window.appUtils.showModal('Generate Report', html);
-    
-    // Add date validation
-    const validateDates = () => {
-      const startDateInput = document.getElementById('startDate');
-      const endDateInput = document.getElementById('endDate');
-      
-      if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
-        const start = new Date(startDateInput.value);
-        const end = new Date(endDateInput.value);
-        
-        if (start > end) {
-          startDateInput.style.borderColor = '#dc3545';
-          endDateInput.style.borderColor = '#dc3545';
-          utils.showToast('Start date cannot be after end date', 'error');
-          return false;
+
+      window.appUtils.showModal('Generate Report', html);
+
+      // Add date validation
+      const validateDates = () => {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+
+        if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
+          const start = new Date(startDateInput.value);
+          const end = new Date(endDateInput.value);
+
+          if (start > end) {
+            startDateInput.style.borderColor = '#dc3545';
+            endDateInput.style.borderColor = '#dc3545';
+            utils.showToast('Start date cannot be after end date', 'error');
+            return false;
+          }
         }
-      }
-      return true;
-    };
-    
-    // Attach validation on change
-    setTimeout(() => {
-      const startDateInput = document.getElementById('startDate');
-      const endDateInput = document.getElementById('endDate');
-      
-      if (startDateInput) {
-        startDateInput.addEventListener('change', validateDates);
-      }
-      if (endDateInput) {
-        endDateInput.addEventListener('change', validateDates);
-      }
-    }, 100);
-    
-  } catch (error) {
-    utils.showToast('Error loading report form: ' + error.message, 'error');
-  }
-},
+        return true;
+      };
 
-generateReport: async function() {
-  try {
-    const reportType = document.getElementById('reportType')?.value;
-    const startDate = document.getElementById('startDate')?.value;
-    const endDate = document.getElementById('endDate')?.value;
-    const department = document.getElementById('departmentFilter')?.value;
-    const exportFormat = document.getElementById('exportFormat')?.value;
-    
-    // Validate required fields
-    if (!startDate || !endDate) {
-      utils.showToast('Date range is required', 'error');
-      return;
-    }
-    
-    if (!exportFormat) {
-      utils.showToast('Please select an export format', 'error');
-      return;
-    }
-    
-    if (new Date(startDate) > new Date(endDate)) {
-      utils.showToast('Start date cannot be after end date', 'error');
-      return;
-    }
-    
-    // Handle different export formats
-    if (exportFormat === 'print') {
-      await this.viewReportForPrint(startDate, endDate, department);
-      return;
-    }
-    
-    if (exportFormat === 'view') {
-      await this.viewReportInBrowser(startDate, endDate, department);
-      return;
-    }
-    
-    // For PDF/Excel downloads
-    if (exportFormat === 'pdf' || exportFormat === 'excel') {
-      await this.downloadReportDirect(exportFormat, startDate, endDate, department);
-      return;
-    }
-    
-  } catch (error) {
-    console.error('Report generation error:', error);
-    utils.showToast('Error generating report: ' + error.message, 'error');
-  }
-},
+      // Attach validation on change
+      setTimeout(() => {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
 
-viewReportInBrowser: async function(startDate, endDate, department) {
-  try {
-    // Close any existing modal first
-    window.appUtils.closeModal();
-    
-    // Show loading
-    window.appUtils.showModal('Loading Report', '<p><i class="fas fa-spinner fa-spin"></i> Generating report, please wait...</p>');
-    
-    // Get report data
-    const params = new URLSearchParams({
-      startDate,
-      endDate
-    });
-    
-    if (department) {
-      params.append('department', department);
+        if (startDateInput) {
+          startDateInput.addEventListener('change', validateDates);
+        }
+        if (endDateInput) {
+          endDateInput.addEventListener('change', validateDates);
+        }
+      }, 100);
+
+    } catch (error) {
+      utils.showToast('Error loading report form: ' + error.message, 'error');
     }
-    
-    const reportData = await api.call(`/staff/reports/attendance?${params.toString()}`, 'GET');
-    
-    // Generate report HTML
-    let reportHTML = `
+  },
+
+  generateReport: async function () {
+    try {
+      const reportType = document.getElementById('reportType')?.value;
+      const startDate = document.getElementById('startDate')?.value;
+      const endDate = document.getElementById('endDate')?.value;
+      const department = document.getElementById('departmentFilter')?.value;
+      const exportFormat = document.getElementById('exportFormat')?.value;
+
+      // Validate required fields
+      if (!startDate || !endDate) {
+        utils.showToast('Date range is required', 'error');
+        return;
+      }
+
+      if (!exportFormat) {
+        utils.showToast('Please select an export format', 'error');
+        return;
+      }
+
+      if (new Date(startDate) > new Date(endDate)) {
+        utils.showToast('Start date cannot be after end date', 'error');
+        return;
+      }
+
+      // Handle different export formats
+      if (exportFormat === 'print') {
+        await this.viewReportForPrint(startDate, endDate, department);
+        return;
+      }
+
+      if (exportFormat === 'view') {
+        await this.viewReportInBrowser(startDate, endDate, department);
+        return;
+      }
+
+      // For PDF/Excel downloads
+      if (exportFormat === 'pdf' || exportFormat === 'excel') {
+        await this.downloadReportDirect(exportFormat, startDate, endDate, department);
+        return;
+      }
+
+    } catch (error) {
+      console.error('Report generation error:', error);
+      utils.showToast('Error generating report: ' + error.message, 'error');
+    }
+  },
+
+  viewReportInBrowser: async function (startDate, endDate, department) {
+    try {
+      // Close any existing modal first
+      window.appUtils.closeModal();
+
+      // Show loading
+      window.appUtils.showModal('Loading Report', '<p><i class="fas fa-spinner fa-spin"></i> Generating report, please wait...</p>');
+
+      // Get report data
+      const params = new URLSearchParams({
+        startDate,
+        endDate
+      });
+
+      if (department) {
+        params.append('department', department);
+      }
+
+      const reportData = await api.call(`/staff/reports/attendance?${params.toString()}`, 'GET');
+
+      // Generate report HTML
+      let reportHTML = `
       <div class="attendance-report" id="printableReport">
         <h4>📊 Attendance Report</h4>
         <div class="report-header">
@@ -1732,15 +1726,15 @@ viewReportInBrowser: async function(startDate, endDate, department) {
               </thead>
               <tbody>
     `;
-    
-    if (reportData.report && reportData.report.length > 0) {
-      reportData.report.forEach(item => {
-        const totalWorkDays = (item.present_days || 0) + (item.absent_days || 0) + (item.late_days || 0) + (item.half_days || 0);
-        const attendancePercentage = totalWorkDays > 0 
-          ? Math.round(((item.present_days || 0) / totalWorkDays) * 100) 
-          : 0;
-          
-        reportHTML += `
+
+      if (reportData.report && reportData.report.length > 0) {
+        reportData.report.forEach(item => {
+          const totalWorkDays = (item.present_days || 0) + (item.absent_days || 0) + (item.late_days || 0) + (item.half_days || 0);
+          const attendancePercentage = totalWorkDays > 0
+            ? Math.round(((item.present_days || 0) / totalWorkDays) * 100)
+            : 0;
+
+          reportHTML += `
           <tr>
             <td>${item.employee_id || 'N/A'}</td>
             <td><strong>${item.name}</strong></td>
@@ -1756,16 +1750,16 @@ viewReportInBrowser: async function(startDate, endDate, department) {
             </td>
           </tr>
         `;
-      });
-    } else {
-      reportHTML += `
+        });
+      } else {
+        reportHTML += `
         <tr>
           <td colspan="8" class="text-center">No attendance data found for the selected period</td>
         </tr>
       `;
-    }
-    
-    reportHTML += `
+      }
+
+      reportHTML += `
               </tbody>
             </table>
           </div>
@@ -1790,249 +1784,249 @@ viewReportInBrowser: async function(startDate, endDate, department) {
         </div>
       </div>
     `;
-    
-    window.appUtils.showModal('Attendance Report', reportHTML);
-    
-  } catch (error) {
-    console.error('View report error:', error);
-    utils.showToast('Error loading report: ' + error.message, 'error');
-    window.appUtils.closeModal();
-  }
-},
 
-downloadReportDirect: async function(format, startDate, endDate, department) {
-  try {
-    // Show loading message
-    utils.showToast(`Generating ${format.toUpperCase()} file...`, 'info');
-    
-    if (format === 'excel') {
-      await this.downloadCSVReport(startDate, endDate, department);
-    } else if (format === 'pdf') {
-      await this.downloadPDFReport(startDate, endDate, department);
-    }
-    
-  } catch (error) {
-    console.error('Download error:', error);
-    utils.showToast(`Failed to download: ${error.message}`, 'error');
-  }
-},
+      window.appUtils.showModal('Attendance Report', reportHTML);
 
-downloadCSVReport: async function(startDate, endDate, department) {
-  try {
-    // Get report data
-    const params = new URLSearchParams({ startDate, endDate });
-    if (department) params.append('department', department);
-    
-    let reportData;
-    try {
-      reportData = await api.call(`/staff/reports/attendance?${params.toString()}`, 'GET');
-    } catch (apiError) {
-      console.log('API failed, using sample data:', apiError);
-      // Use sample data matching the actual staff in database
-      reportData = {
-        totalStaff: 3,
-        report: [
-          {
-            employee_id: 'STF-25001',
-            name: 'John Doe',
-            department: 'Hair Services',
-            present_days: 1,
-            absent_days: 0,
-            late_days: 0,
-            half_days: 0
-          },
-          {
-            employee_id: 'STF-25002',
-            name: 'Jane Smith',
-            department: 'Spa Services',
-            present_days: 1,
-            absent_days: 0,
-            late_days: 0,
-            half_days: 0
-          },
-          {
-            employee_id: 'STF-25003',
-            name: 'Bob Wilson',
-            department: 'Reception',
-            present_days: 1,
-            absent_days: 0,
-            late_days: 0,
-            half_days: 0
-          }
-        ]
-      };
+    } catch (error) {
+      console.error('View report error:', error);
+      utils.showToast('Error loading report: ' + error.message, 'error');
+      window.appUtils.closeModal();
     }
-    
-    // Generate CSV content
-    let csv = 'Employee ID,Staff Name,Department,Present Days,Absent Days,Late Days,Half Days,Attendance %\n';
-    
-    if (reportData.report && reportData.report.length > 0) {
-      reportData.report.forEach(item => {
-        const presentDays = parseInt(item.present_days) || 0;
-        const absentDays = parseInt(item.absent_days) || 0;
-        const lateDays = parseInt(item.late_days) || 0;
-        const halfDays = parseInt(item.half_days) || 0;
-        const totalWorkDays = presentDays + absentDays + lateDays + halfDays;
-        
-        const attendancePercentage = totalWorkDays > 0 
-          ? Math.round((presentDays / totalWorkDays) * 100) 
-          : 0;
-        
-        const row = [
-          item.employee_id || 'N/A',
-          `"${(item.name || '').replace(/"/g, '""')}"`,
-          item.department || 'N/A',
-          presentDays,
-          absentDays,
-          lateDays,
-          halfDays,
-          `${attendancePercentage}%`
-        ];
-        
-        csv += row.join(',') + '\n';
-      });
-    } else {
-      // Add sample data
-      csv += 'STF-25004,yash khade,Spa Services,1,0,0,0,100%\n';
-    }
-    
-    // Create and download CSV file - FIXED SIMPLIFIED METHOD
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    
-    // Create simple filename (no timestamp to avoid issues)
-    const filename = `attendance_report_${startDate}_to_${endDate}.csv`;
-    
-    // Create download link
-    const link = document.createElement('a');
-    link.style.display = 'none';
-    link.href = url;
-    link.download = filename;
-    
-    // Append to body and click
-    document.body.appendChild(link);
-    link.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-    
-    utils.showToast('CSV file downloaded successfully!', 'success');
-    
-  } catch (error) {
-    console.error('CSV download error:', error);
-    
-    // Fallback method
+  },
+
+  downloadReportDirect: async function (format, startDate, endDate, department) {
     try {
-      // Simple fallback CSV
-      const csvData = 'Employee ID,Staff Name,Department,Present Days,Absent Days,Late Days\nSTF-25004,yash khade,Spa Services,1,0,0';
-      const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData);
+      // Show loading message
+      utils.showToast(`Generating ${format.toUpperCase()} file...`, 'info');
+
+      if (format === 'excel') {
+        await this.downloadCSVReport(startDate, endDate, department);
+      } else if (format === 'pdf') {
+        await this.downloadPDFReport(startDate, endDate, department);
+      }
+
+    } catch (error) {
+      console.error('Download error:', error);
+      utils.showToast(`Failed to download: ${error.message}`, 'error');
+    }
+  },
+
+  downloadCSVReport: async function (startDate, endDate, department) {
+    try {
+      // Get report data
+      const params = new URLSearchParams({ startDate, endDate });
+      if (department) params.append('department', department);
+
+      let reportData;
+      try {
+        reportData = await api.call(`/staff/reports/attendance?${params.toString()}`, 'GET');
+      } catch (apiError) {
+        console.log('API failed, using sample data:', apiError);
+        // Use sample data matching the actual staff in database
+        reportData = {
+          totalStaff: 3,
+          report: [
+            {
+              employee_id: 'STF-25001',
+              name: 'John Doe',
+              department: 'Hair Services',
+              present_days: 1,
+              absent_days: 0,
+              late_days: 0,
+              half_days: 0
+            },
+            {
+              employee_id: 'STF-25002',
+              name: 'Jane Smith',
+              department: 'Spa Services',
+              present_days: 1,
+              absent_days: 0,
+              late_days: 0,
+              half_days: 0
+            },
+            {
+              employee_id: 'STF-25003',
+              name: 'Bob Wilson',
+              department: 'Reception',
+              present_days: 1,
+              absent_days: 0,
+              late_days: 0,
+              half_days: 0
+            }
+          ]
+        };
+      }
+
+      // Generate CSV content
+      let csv = 'Employee ID,Staff Name,Department,Present Days,Absent Days,Late Days,Half Days,Attendance %\n';
+
+      if (reportData.report && reportData.report.length > 0) {
+        reportData.report.forEach(item => {
+          const presentDays = parseInt(item.present_days) || 0;
+          const absentDays = parseInt(item.absent_days) || 0;
+          const lateDays = parseInt(item.late_days) || 0;
+          const halfDays = parseInt(item.half_days) || 0;
+          const totalWorkDays = presentDays + absentDays + lateDays + halfDays;
+
+          const attendancePercentage = totalWorkDays > 0
+            ? Math.round((presentDays / totalWorkDays) * 100)
+            : 0;
+
+          const row = [
+            item.employee_id || 'N/A',
+            `"${(item.name || '').replace(/"/g, '""')}"`,
+            item.department || 'N/A',
+            presentDays,
+            absentDays,
+            lateDays,
+            halfDays,
+            `${attendancePercentage}%`
+          ];
+
+          csv += row.join(',') + '\n';
+        });
+      } else {
+        // Add sample data
+        csv += 'STF-25004,yash khade,Spa Services,1,0,0,0,100%\n';
+      }
+
+      // Create and download CSV file - FIXED SIMPLIFIED METHOD
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+
+      // Create simple filename (no timestamp to avoid issues)
       const filename = `attendance_report_${startDate}_to_${endDate}.csv`;
-      
+
+      // Create download link
       const link = document.createElement('a');
-      link.setAttribute('href', dataUri);
-      link.setAttribute('download', filename);
       link.style.display = 'none';
-      
+      link.href = url;
+      link.download = filename;
+
+      // Append to body and click
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      
-      utils.showToast('CSV file downloaded via fallback method', 'success');
-    } catch (fallbackError) {
-      console.error('Fallback error:', fallbackError);
-      utils.showToast('Failed to download CSV. Please try again.', 'error');
-    }
-  }
-},
 
-downloadPDFReport: async function(startDate, endDate, department) {
-  try {
-    // Get report data from API
-    const params = new URLSearchParams({ startDate, endDate });
-    if (department) params.append('department', department);
-    
-    // Get salon settings for GSTIN and tax information
-    let salonSettings = null;
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      utils.showToast('CSV file downloaded successfully!', 'success');
+
+    } catch (error) {
+      console.error('CSV download error:', error);
+
+      // Fallback method
+      try {
+        // Simple fallback CSV
+        const csvData = 'Employee ID,Staff Name,Department,Present Days,Absent Days,Late Days\nSTF-25004,yash khade,Spa Services,1,0,0';
+        const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData);
+        const filename = `attendance_report_${startDate}_to_${endDate}.csv`;
+
+        const link = document.createElement('a');
+        link.setAttribute('href', dataUri);
+        link.setAttribute('download', filename);
+        link.style.display = 'none';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        utils.showToast('CSV file downloaded via fallback method', 'success');
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        utils.showToast('Failed to download CSV. Please try again.', 'error');
+      }
+    }
+  },
+
+  downloadPDFReport: async function (startDate, endDate, department) {
     try {
-      salonSettings = await api.call('/settings', 'GET');
-    } catch (settingsError) {
-      console.log('Could not load salon settings:', settingsError);
-    }
-    
-    let reportData;
-    try {
-      reportData = await api.call(`/staff/reports/attendance?${params.toString()}`, 'GET');
-    } catch (apiError) {
-      console.log('API failed, using sample data:', apiError);
-      // Use sample data matching the actual staff in database
-      reportData = {
-        totalStaff: 3,
-        report: [
-          {
-            employee_id: 'STF-25001',
-            name: 'John Doe',
-            department: 'Hair Services',
-            present_days: 1,
-            absent_days: 0,
-            late_days: 0,
-            half_days: 0
-          },
-          {
-            employee_id: 'STF-25002',
-            name: 'Jane Smith',
-            department: 'Spa Services',
-            present_days: 1,
-            absent_days: 0,
-            late_days: 0,
-            half_days: 0
-          },
-          {
-            employee_id: 'STF-25003',
-            name: 'Bob Wilson',
-            department: 'Reception',
-            present_days: 1,
-            absent_days: 0,
-            late_days: 0,
-            half_days: 0
-          }
-        ]
-      };
-    }
-    
-    // Calculate summary statistics
-    const totalStaff = reportData.totalStaff || 0;
-    let totalPresentDays = 0;
-    let totalAbsentDays = 0;
-    let totalLateDays = 0;
-    let totalHalfDays = 0;
-    
-    if (reportData.report && reportData.report.length > 0) {
-      reportData.report.forEach(item => {
-        totalPresentDays += parseInt(item.present_days) || 0;
-        totalAbsentDays += parseInt(item.absent_days) || 0;
-        totalLateDays += parseInt(item.late_days) || 0;
-        totalHalfDays += parseInt(item.half_days) || 0;
-      });
-    }
-    
-    // Generate table rows for staff data
-    let tableRows = '';
-    if (reportData.report && reportData.report.length > 0) {
-      reportData.report.forEach(item => {
-        const presentDays = parseInt(item.present_days) || 0;
-        const absentDays = parseInt(item.absent_days) || 0;
-        const lateDays = parseInt(item.late_days) || 0;
-        const halfDays = parseInt(item.half_days) || 0;
-        const totalWorkDays = presentDays + absentDays + lateDays + halfDays;
-        
-        const attendancePercentage = totalWorkDays > 0 
-          ? Math.round((presentDays / totalWorkDays) * 100) 
-          : 0;
-        
-        tableRows += `
+      // Get report data from API
+      const params = new URLSearchParams({ startDate, endDate });
+      if (department) params.append('department', department);
+
+      // Get salon settings for GSTIN and tax information
+      let salonSettings = null;
+      try {
+        salonSettings = await api.call('/settings', 'GET');
+      } catch (settingsError) {
+        console.log('Could not load salon settings:', settingsError);
+      }
+
+      let reportData;
+      try {
+        reportData = await api.call(`/staff/reports/attendance?${params.toString()}`, 'GET');
+      } catch (apiError) {
+        console.log('API failed, using sample data:', apiError);
+        // Use sample data matching the actual staff in database
+        reportData = {
+          totalStaff: 3,
+          report: [
+            {
+              employee_id: 'STF-25001',
+              name: 'John Doe',
+              department: 'Hair Services',
+              present_days: 1,
+              absent_days: 0,
+              late_days: 0,
+              half_days: 0
+            },
+            {
+              employee_id: 'STF-25002',
+              name: 'Jane Smith',
+              department: 'Spa Services',
+              present_days: 1,
+              absent_days: 0,
+              late_days: 0,
+              half_days: 0
+            },
+            {
+              employee_id: 'STF-25003',
+              name: 'Bob Wilson',
+              department: 'Reception',
+              present_days: 1,
+              absent_days: 0,
+              late_days: 0,
+              half_days: 0
+            }
+          ]
+        };
+      }
+
+      // Calculate summary statistics
+      const totalStaff = reportData.totalStaff || 0;
+      let totalPresentDays = 0;
+      let totalAbsentDays = 0;
+      let totalLateDays = 0;
+      let totalHalfDays = 0;
+
+      if (reportData.report && reportData.report.length > 0) {
+        reportData.report.forEach(item => {
+          totalPresentDays += parseInt(item.present_days) || 0;
+          totalAbsentDays += parseInt(item.absent_days) || 0;
+          totalLateDays += parseInt(item.late_days) || 0;
+          totalHalfDays += parseInt(item.half_days) || 0;
+        });
+      }
+
+      // Generate table rows for staff data
+      let tableRows = '';
+      if (reportData.report && reportData.report.length > 0) {
+        reportData.report.forEach(item => {
+          const presentDays = parseInt(item.present_days) || 0;
+          const absentDays = parseInt(item.absent_days) || 0;
+          const lateDays = parseInt(item.late_days) || 0;
+          const halfDays = parseInt(item.half_days) || 0;
+          const totalWorkDays = presentDays + absentDays + lateDays + halfDays;
+
+          const attendancePercentage = totalWorkDays > 0
+            ? Math.round((presentDays / totalWorkDays) * 100)
+            : 0;
+
+          tableRows += `
           <tr>
             <td>${item.employee_id || 'N/A'}</td>
             <td>${item.name || 'N/A'}</td>
@@ -2043,10 +2037,10 @@ downloadPDFReport: async function(startDate, endDate, department) {
             <td>${attendancePercentage}%</td>
           </tr>
         `;
-      });
-    } else {
-      // Fallback row if no data
-      tableRows = `
+        });
+      } else {
+        // Fallback row if no data
+        tableRows = `
         <tr>
           <td>STF-25004</td>
           <td>yash khade</td>
@@ -2057,13 +2051,13 @@ downloadPDFReport: async function(startDate, endDate, department) {
           <td>100%</td>
         </tr>
       `;
-    }
-    
-    // For PDF, create a simple HTML page that users can print as PDF
-    const printWindow = window.open('', '_blank');
-    
-    // Create PDF content with dynamic data
-    const content = `
+      }
+
+      // For PDF, create a simple HTML page that users can print as PDF
+      const printWindow = window.open('', '_blank');
+
+      // Create PDF content with dynamic data
+      const content = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -2209,29 +2203,29 @@ downloadPDFReport: async function(startDate, endDate, department) {
       </body>
       </html>
     `;
-    
-    printWindow.document.write(content);
-    printWindow.document.close();
-    
-    utils.showToast('PDF ready - Use browser print to save as PDF', 'info');
-    
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    utils.showToast('Failed to generate PDF. Please try the print option.', 'error');
-  }
-},
 
-printReport: function() {
-  // Get the report content
-  const reportElement = document.getElementById('printableReport');
-  if (!reportElement) {
-    utils.showToast('No report available to print', 'warning');
-    return;
-  }
-  
-  // Create a print window
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
+      printWindow.document.write(content);
+      printWindow.document.close();
+
+      utils.showToast('PDF ready - Use browser print to save as PDF', 'info');
+
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      utils.showToast('Failed to generate PDF. Please try the print option.', 'error');
+    }
+  },
+
+  printReport: function () {
+    // Get the report content
+    const reportElement = document.getElementById('printableReport');
+    if (!reportElement) {
+      utils.showToast('No report available to print', 'warning');
+      return;
+    }
+
+    // Create a print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
     <html>
       <head>
         <title>Print Attendance Report</title>
@@ -2255,12 +2249,12 @@ printReport: function() {
       </body>
     </html>
   `);
-  printWindow.document.close();
-},
+    printWindow.document.close();
+  },
 
-viewReportForPrint: async function(startDate, endDate, department) {
-  await this.viewReportInBrowser(startDate, endDate, department);
-}
+  viewReportForPrint: async function (startDate, endDate, department) {
+    await this.viewReportInBrowser(startDate, endDate, department);
+  }
 }; // <-- IMPORTANT: This closes the window.staffModule object
 
 // ==================== HELPER FUNCTIONS ====================
@@ -2279,7 +2273,7 @@ function getAttendanceStatusClass(status) {
 }
 
 // Add CSS for clickable elements
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const style = document.createElement('style');
   style.textContent = `
     .clickable-card {
