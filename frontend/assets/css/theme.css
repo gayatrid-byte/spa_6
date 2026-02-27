@@ -1,0 +1,417 @@
+ /*
+ * ═══════════════════════════════════════════════════════════
+ *  GLOBAL DESIGN TOKEN SYSTEM — UNIFIED THEME ARCHITECTURE
+ *  Enterprise SaaS Dashboard · Salon Management System
+ *  
+ *  Single source of truth for ALL modules:
+ *  Dashboard, Staff, Customers, Services, Billing, Reports
+ *
+ *  Architecture: Dark-first → .light-mode override
+ *  WCAG 2.1 AA compliant (min 4.5:1 text contrast)
+ * ═══════════════════════════════════════════════════════════
+ */
+
+ /* ─────────────────────────────────────────────────────
+   1. CORE DESIGN TOKENS — DARK THEME (DEFAULT)
+   ───────────────────────────────────────────────────── */
+ :root {
+   /* ── Brand Identity ── */
+   --color-primary: #14b8a6;
+   --color-primary-hover: #2dd4bf;
+   --color-primary-dark: #0f766e;
+   --color-secondary: #0ea5a4;
+   --color-secondary-hover: #14b8a6;
+   --color-accent: #22c55e;
+   --color-accent-hover: #4ade80;
+   --color-gold: #C8A951;
+   --color-gold-hover: #D4BC74;
+
+   /* ── Surfaces ── */
+   --color-bg-body: #071c1a;
+   --color-bg-card: #0f2e2c;
+   --color-bg-card-hover: #123a38;
+   --color-bg-sidebar: #062f2c;
+   --color-bg-input: #0d2523;
+   --color-bg-input-focus: #123a38;
+   --color-bg-glass: rgba(6, 47, 44, 0.75);
+   --color-bg-header: rgba(6, 47, 44, 0.85);
+   --color-bg-table-header: rgba(6, 47, 44, 0.6);
+   --color-bg-table-hover: rgba(20, 184, 166, 0.05);
+   --color-bg-modal: rgba(2, 20, 18, 0.75);
+
+   /* ── Typography ── */
+   --color-text-primary: #ecfdf5;
+   --color-text-secondary: #99f6e4;
+   --color-text-muted: #5eead4;
+   --color-text-inverse: #062f2c;
+   --color-text-heading: #ccfbf1;
+   --color-text-link: #2dd4bf;
+   --color-text-link-hover: #5eead4;
+
+   /* ── Borders ── */
+   --color-border: #134e4a;
+   --color-border-subtle: rgba(255, 255, 255, 0.06);
+   --color-border-input: rgba(255, 255, 255, 0.08);
+   --color-border-focus: var(--color-primary);
+   --color-border-card: rgba(255, 255, 255, 0.04);
+
+   /* ── Sidebar-Specific ── */
+    --sidebar-text: rgba(255, 255, 255, 0.75);
+   --sidebar-text-active: #ffffff;
+   --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+   --sidebar-active-bg: rgba(255, 255, 255, 0.12);
+   --sidebar-separator: rgba(255, 255, 255, 0.08);
+
+   /* ── side bar cli── */
+   --sidebar-bg-gradient: linear-gradient(180deg, #0b3d3a 0%, #062f2c 100%);
+   --sidebar-footer-bg: rgba(0, 0, 0, 0.35);
+   /* ── Shadows ── */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+   --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.35);
+   --shadow-primary: 0 4px 15px rgba(20, 184, 166, 0.3);
+   --shadow-gold: 0 8px 20px rgba(200, 169, 81, 0.14);
+
+   /* ── Semantic Colors ── */
+   --color-success: #22c55e;
+   --color-success-bg: rgba(34, 197, 94, 0.1);
+   --color-warning: #f59e0b;
+   --color-warning-bg: rgba(245, 158, 11, 0.1);
+   --color-danger: #ef4444;
+   --color-danger-bg: rgba(239, 68, 68, 0.1);
+   --color-info: #06b6d4;
+   --color-info-bg: rgba(6, 182, 212, 0.1);
+
+   /* ── Radii ── */
+   --radius-sm: 8px;
+   --radius-md: 12px;
+   --radius-lg: 20px;
+   --radius-full: 9999px;
+
+   /* ── Transitions ── */
+   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+   /* ── Layout ── */
+   --sidebar-width: 280px;
+   --header-height: 80px;
+
+   /* ── Scrollbar ── */
+    --scrollbar-track: #0d2523;
+   --scrollbar-thumb: #134e4a;
+   --scrollbar-hover: var(--color-primary);
+}
+
+
+ /* ─────────────────────────────────────────────────────
+   2. LIGHT MODE OVERRIDE
+   ───────────────────────────────────────────────────── */
+ .light-mode {
+   /* ── Surfaces ── */
+   --color-bg-body: #f8fafc;
+   --color-bg-card: #ffffff;
+   --color-bg-card-hover: #f1f5f9;
+   --color-bg-sidebar: #1e293b;
+   --color-bg-input: #ffffff;
+   --color-bg-input-focus: #ffffff;
+   --color-bg-glass: rgba(255, 255, 255, 0.85);
+   --color-bg-header: rgba(255, 255, 255, 0.9);
+   --color-bg-table-header: #f8fafc;
+   --color-bg-table-hover: rgba(124, 58, 237, 0.03);
+   --color-bg-modal: rgba(15, 23, 42, 0.5);
+
+   /* ── Typography ── */
+   --color-text-primary: #0f172a;
+   --color-text-secondary: #475569;
+   --color-text-muted: #94a3b8;
+   --color-text-inverse: #f8fafc;
+   --color-text-heading: #1e293b;
+   --color-text-link: #7c3aed;
+   --color-text-link-hover: #6d28d9;
+
+   /* ── Borders ── */
+   --color-border: #e2e8f0;
+   --color-border-subtle: rgba(0, 0, 0, 0.06);
+   --color-border-input: rgba(0, 0, 0, 0.1);
+   --color-border-card: rgba(0, 0, 0, 0.06);
+
+   /* ── Sidebar stays dark for contrast ── */
+   --sidebar-bg-gradient: linear-gradient(180deg, #0ea094f3 0%, #115E59 100%);
+   --sidebar-active-bg: rgba(255, 255, 255, 0.15);
+   --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+
+   /* ── Shadows ── */
+   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1);
+   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.14);
+   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06);
+
+   /* ── Scrollbar ── */
+   --scrollbar-track: #f1f5f9;
+   --scrollbar-thumb: #cbd5e1;
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   3. SYSTEM PREFERENCE AUTO-DETECT
+   ───────────────────────────────────────────────────── */
+ @media (prefers-color-scheme: light) {
+   body:not(.dark-mode):not(.light-mode) {
+     /* Same overrides as .light-mode for system-pref users   */
+     --color-bg-body: #f8fafc;
+     --color-bg-card: #ffffff;
+     --color-bg-card-hover: #f1f5f9;
+     --color-bg-sidebar: #000000;
+     --color-bg-input: #ffffff;
+     --color-bg-input-focus: #ffffff;
+     --color-bg-glass: rgba(255, 255, 255, 0.85);
+     --color-bg-header: rgba(255, 255, 255, 0.9);
+     --color-bg-table-header: #f8fafc;
+     --color-bg-table-hover: rgba(124, 58, 237, 0.03);
+     --color-bg-modal: rgba(15, 23, 42, 0.5);
+     --color-text-primary: #0f172a;
+     --color-text-secondary: #475569;
+     --color-text-muted: #94a3b8;
+     --color-text-inverse: #f8fafc;
+     --color-text-heading: #1e293b;
+     --color-border: #e2e8f0;
+     --color-border-subtle: rgba(0, 0, 0, 0.06);
+     --color-border-input: rgba(0, 0, 0, 0.1);
+     --color-border-card: rgba(0, 0, 0, 0.06);
+     --sidebar-bg-gradient: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+     --sidebar-footer-bg: rgba(0, 0, 0, 0.15);
+     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1);
+     --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.14);
+     --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06);
+     --scrollbar-track: #f1f5f9;
+     --scrollbar-thumb: #cbd5e1;
+   }
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   4. SMOOTH THEME TRANSITIONS
+   ───────────────────────────────────────────────────── */
+ html,
+ body,
+ .sidebar,
+ .main-content,
+ .top-header,
+ .card,
+ .stat-card,
+ .kpi-card,
+ .table-container,
+ .modal-content,
+ .btn,
+ input,
+ select,
+ textarea,
+ .toast,
+ .badge,
+ .chart-box,
+ .ledger-wrap,
+ .dash-wrap,
+ .invoice-summary-card,
+ .summary-total-box,
+ .booking-container,
+ .form-section,
+ .premium-icon,
+ img {
+   transition-property: background-color, color, border-color, box-shadow, transform, opacity, filter;
+   transition-duration: 0.3s;
+   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   5. RESPONSIVE BREAKPOINTS
+   ───────────────────────────────────────────────────── */
+
+ /* ── Desktop ≥1200px (default — full sidebar, 4-col dash grid) ── */
+ .dashboard-grid,
+ .kpi-grid,
+ .dashboard-cards,
+ .stats-cards {
+   display: grid;
+   gap: 1rem;
+   grid-template-columns: repeat(4, 1fr);
+ }
+
+ /* ── Laptop 992–1199px ── */
+ @media (max-width: 1199px) {
+   :root {
+     --sidebar-width: 80px;
+   }
+
+   .dashboard-grid,
+   .kpi-grid,
+   .dashboard-cards,
+   .stats-cards {
+     grid-template-columns: repeat(3, 1fr);
+   }
+ }
+
+ /* ── Tablet 768–991px ── */
+ @media (max-width: 991px) {
+   :root {
+     --sidebar-width: 72px;
+   }
+
+   .dashboard-grid,
+   .kpi-grid,
+   .dashboard-cards,
+   .stats-cards {
+     grid-template-columns: repeat(2, 1fr);
+   }
+ }
+
+ /* ── Mobile ≤767px ── */
+ @media (max-width: 767px) {
+
+   .dashboard-grid,
+   .kpi-grid,
+   .dashboard-cards,
+   .stats-cards {
+     grid-template-columns: 1fr;
+   }
+
+   .table-container,
+   .ledger-wrap {
+     overflow-x: auto;
+     -webkit-overflow-scrolling: touch;
+   }
+
+   table {
+     min-width: 600px;
+   }
+
+   .btn {
+     min-height: 44px;
+     font-size: clamp(0.75rem, 2vw, 0.875rem);
+   }
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   6. TYPOGRAPHY (clamp-based)
+   ───────────────────────────────────────────────────── */
+ h1 {
+   font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+ }
+
+ h2 {
+   font-size: clamp(1.125rem, 2vw, 1.5rem);
+ }
+
+ h3 {
+   font-size: clamp(1rem, 1.8vw, 1.25rem);
+ }
+
+ h4 {
+   font-size: clamp(0.875rem, 1.5vw, 1.125rem);
+ }
+
+ body {
+   font-size: clamp(0.875rem, 1.2vw, 1rem);
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   7. FOCUS / ACCESSIBILITY STATES
+   ───────────────────────────────────────────────────── */
+ :focus-visible {
+   outline: 2px solid var(--color-primary);
+   outline-offset: 2px;
+ }
+
+ .btn:focus-visible {
+   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.4);
+ }
+
+ input:focus-visible,
+ select:focus-visible,
+ textarea:focus-visible {
+   border-color: var(--color-primary);
+   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+ }
+
+ .btn:disabled,
+ .btn[disabled] {
+   opacity: 0.5;
+   cursor: not-allowed;
+   pointer-events: none;
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   8. THEME TOGGLE BUTTON
+   ───────────────────────────────────────────────────── */
+ .theme-toggle {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 42px;
+   height: 42px;
+   border-radius: var(--radius-full);
+   border: 1px solid var(--color-border);
+   background: var(--color-bg-card);
+   color: var(--color-text-primary);
+   cursor: pointer;
+   font-size: 1.15rem;
+   transition: var(--transition-normal);
+   position: relative;
+   z-index: 950;
+ }
+
+ .theme-toggle:hover {
+   background: var(--color-bg-card-hover);
+   border-color: var(--color-primary);
+   transform: rotate(15deg) scale(1.05);
+   color: var(--color-primary);
+ }
+
+ .theme-toggle .toggle-icon-sun,
+ .theme-toggle .toggle-icon-moon {
+   position: absolute;
+   transition: var(--transition-normal);
+ }
+
+ /* Dark mode default: show sun icon */
+ .theme-toggle .toggle-icon-sun {
+   opacity: 1;
+   transform: rotate(0deg);
+ }
+
+ .theme-toggle .toggle-icon-moon {
+   opacity: 0;
+   transform: rotate(-90deg);
+ }
+
+ /* Light mode: show moon icon */
+ .light-mode .theme-toggle .toggle-icon-sun {
+   opacity: 0;
+   transform: rotate(90deg);
+ }
+
+ .light-mode .theme-toggle .toggle-icon-moon {
+   opacity: 1;
+   transform: rotate(0deg);
+ }
+
+
+ /* ─────────────────────────────────────────────────────
+   9. HIGH-CONTRAST MODE (future-proofing)
+   ───────────────────────────────────────────────────── */
+ @media (prefers-contrast: high) {
+   :root {
+     --color-border: #94a3b8;
+     --color-border-card: #64748b;
+     --color-text-muted: #cbd5e1;
+     --shadow-sm: none;
+     --shadow-md: none;
+     --shadow-lg: none;
+   }
+ }

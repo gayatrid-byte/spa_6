@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise BI Dashboard - Premium Analytics</title>
+  <link rel="stylesheet" href="assets/css/theme.css">
+  <link rel="stylesheet" href="assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+</head>
+
+<body>
+  <!-- Navigation -->
+  <nav class="bi-navbar">
+    <div class="navbar-container">
+      <div class="navbar-logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M3 3v18h18M3 15l5-5 5 5 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="8" cy="10" r="2" fill="currentColor" />
+        </svg>
+        <span class="logo-text">Enterprise BI</span>
+      </div>
+      <div class="navbar-menu">
+        <a href="#dashboard" class="nav-link active" data-section="dashboard">Dashboard</a>
+        <a href="#reports" class="nav-link" data-section="reports">Reports</a>
+        <a href="#templates" class="nav-link" data-section="templates">Templates</a>
+        <a href="#settings" class="nav-link" data-section="settings">Settings</a>
+      </div>
+      <div class="navbar-user">
+        <span class="user-name" id="userName">User</span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="bi-container">
+    <!-- Sidebar -->
+    <aside class="bi-sidebar">
+      <div class="sidebar-section">
+        <h3>MODULES</h3>
+        <ul class="module-list">
+          <li><a href="#" data-module="revenue" class="module-link active">💰 Revenue</a></li>
+          <li><a href="#" data-module="bookings" class="module-link">📅 Bookings</a></li>
+          <li><a href="#" data-module="customers" class="module-link">👥 Customers</a></li>
+          <li><a href="#" data-module="staff" class="module-link">👔 Staff</a></li>
+          <li><a href="#" data-module="memberships" class="module-link">🎫 Memberships</a></li>
+          <li><a href="#" data-module="profit" class="module-link">📊 Profit</a></li>
+          <li><a href="#" data-module="services" class="module-link">✂️ Services</a></li>
+          <li><a href="#" data-module="forecast" class="module-link">🤖 AI Forecast</a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>PERIOD</h3>
+        <div class="date-filter">
+          <input type="date" id="startDate" class="date-input">
+          <input type="date" id="endDate" class="date-input">
+          <button id="filterBtn" class="filter-btn">Apply</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>EXPORT</h3>
+        <div class="export-options">
+          <button class="export-btn" onclick="exportPDF()">📄 PDF</button>
+          <button class="export-btn" onclick="exportExcel()">📊 Excel</button>
+          <button class="export-btn" onclick="exportCSV()">📋 CSV</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="bi-main">
+      <!-- KPI Cards -->
+      <section class="kpi-section">
+        <div id="kpiContainer" class="kpi-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- Charts Section -->
+      <section class="charts-section">
+        <div class="chart-container">
+          <div class="chart-header">
+            <h3 id="chartTitle">Revenue Trend</h3>
+            <div class="chart-options">
+              <select id="chartPeriod" class="chart-select">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+          </div>
+          <canvas id="mainChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <h3>Distribution</h3>
+          </div>
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Data Table Section -->
+      <section class="table-section">
+        <div class="table-header">
+          <h3 id="tableTitle">Detailed Analysis</h3>
+          <div class="table-actions">
+            <input type="text" id="tableSearch" placeholder="Search..." class="search-input">
+            <select id="tableSortBy" class="sort-select">
+              <option value="default">Sort by</option>
+              <option value="value-desc">Value (High to Low)</option>
+              <option value="value-asc">Value (Low to High)</option>
+              <option value="count-desc">Count (High to Low)</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="dataTable" class="data-table">
+            <thead id="tableHead"></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <button id="prevBtn" class="pagination-btn">← Previous</button>
+          <span id="pageIndicator" class="page-indicator">Page 1</span>
+          <button id="nextBtn" class="pagination-btn">Next →</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Template Showcase Modal -->
+  <div id="templatesSection" class="templates-section" style="display: none;">
+    <div class="templates-container">
+      <div class="templates-header">
+        <h2>Explore More Dashboard Templates</h2>
+        <p>Discover premium enterprise dashboard modules designed for modern business analytics and reporting.</p>
+      </div>
+
+      <div class="templates-grid">
+        <!-- Template Cards -->
+        <div class="template-card" onclick="launchTemplate('revenue')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#f0f4ff" />
+              <path d="M 30 150 L 80 100 L 130 120 L 180 60 L 230 90 L 280 40" stroke="#6366f1" stroke-width="3"
+                fill="none" />
+              <circle cx="30" cy="150" r="4" fill="#6366f1" />
+              <circle cx="80" cy="100" r="4" fill="#6366f1" />
+              <circle cx="130" cy="120" r="4" fill="#6366f1" />
+              <circle cx="180" cy="60" r="4" fill="#6366f1" />
+              <circle cx="230" cy="90" r="4" fill="#6366f1" />
+              <circle cx="280" cy="40" r="4" fill="#6366f1" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Revenue Trend</text>
+            </svg>
+          </div>
+          <h3>Revenue Intelligence Dashboard</h3>
+          <p>Real-time revenue tracking with payment method breakdown and service performance analysis.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('bookings')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#f0fdf4" />
+              <rect x="40" y="30" width="40" height="50" fill="#22c55e" opacity="0.7" />
+              <rect x="110" y="50" width="40" height="50" fill="#22c55e" />
+              <rect x="180" y="40" width="40" height="50" fill="#22c55e" opacity="0.7" />
+              <rect x="250" y="60" width="30" height="50" fill="#22c55e" opacity="0.5" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Booking Distribution</text>
+            </svg>
+          </div>
+          <h3>Booking Analytics Dashboard</h3>
+          <p>Appointment analytics with completion rates, booking types, and slot utilization metrics.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('customers')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#fdf2f8" />
+              <circle cx="75" cy="60" r="15" fill="#ec4899" opacity="0.8" />
+              <circle cx="150" cy="50" r="15" fill="#ec4899" />
+              <circle cx="225" cy="70" r="15" fill="#ec4899" opacity="0.9" />
+              <path d="M 60 100 Q 90 120 120 100" stroke="#ec4899" stroke-width="2" fill="none" />
+              <path d="M 140 110 Q 170 130 200 110" stroke="#ec4899" stroke-width="2" fill="none" />
+              <circle cx="75" cy="100" r="3" fill="#ec4899" />
+              <circle cx="150" cy="110" r="3" fill="#ec4899" />
+              <circle cx="225" cy="105" r="3" fill="#ec4899" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Customer Segments</text>
+            </svg>
+          </div>
+          <h3>Customer Intelligence Dashboard</h3>
+          <p>Customer lifetime value, retention rates, and segmentation with predictive churn analysis.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('staff')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#fef3c7" />
+              <rect x="30" y="40" width="50" height="100" fill="#f59e0b" opacity="0.7" />
+              <rect x="110" y="30" width="50" height="110" fill="#f59e0b" />
+              <rect x="190" y="50" width="50" height="90" fill="#f59e0b" opacity="0.8" />
+              <line x1="30" y1="140" x2="240" y2="140" stroke="#f59e0b" stroke-width="2" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Staff Performance</text>
+            </svg>
+          </div>
+          <h3>Staff Performance Dashboard</h3>
+          <p>Staff productivity metrics, utilization rates, and service specialization performance.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('memberships')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#f5f3ff" />
+              <circle cx="150" cy="100" r="60" fill="none" stroke="#a855f7" stroke-width="2" />
+              <path d="M 150 40 A 60 60 0 0 1 210 100" fill="#a855f7" opacity="0.7" />
+              <path d="M 210 100 A 60 60 0 0 1 150 160" fill="#a855f7" opacity="0.5" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Membership Growth</text>
+            </svg>
+          </div>
+          <h3>Membership Analytics Dashboard</h3>
+          <p>Active memberships, renewal rates, MRR tracking, and membership tier performance.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('profit')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#ecfdf5" />
+              <path
+                d="M 30 150 L 50 120 L 70 100 L 90 110 L 110 80 L 130 90 L 150 60 L 170 70 L 190 50 L 210 60 L 230 40 L 250 45 L 270 30"
+                stroke="#10b981" stroke-width="3" fill="none" />
+              <polygon
+                points="30,150 50,120 70,100 90,110 110,80 130,90 150,60 170,70 190,50 210,60 230,40 250,45 270,30 270,180 30,180"
+                fill="#10b981" opacity="0.1" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Profit Analysis</text>
+            </svg>
+          </div>
+          <h3>Expense & Profit Dashboard</h3>
+          <p>Profit & loss analytics, expense breakdowns, and profitability trends with margin analysis.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('services')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#fef1f5" />
+              <g id="bars">
+                <rect x="30" y="80" width="25" height="80" fill="#f43f5e" opacity="0.6" />
+                <rect x="70" y="60" width="25" height="100" fill="#f43f5e" />
+                <rect x="110" y="90" width="25" height="70" fill="#f43f5e" opacity="0.7" />
+                <rect x="150" y="50" width="25" height="110" fill="#f43f5e" />
+                <rect x="190" y="75" width="25" height="85" fill="#f43f5e" opacity="0.8" />
+                <rect x="230" y="95" width="25" height="65" fill="#f43f5e" opacity="0.5" />
+              </g>
+              <line x1="20" y1="160" x2="270" y2="160" stroke="#f43f5e" stroke-width="2" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">Service Revenue</text>
+            </svg>
+          </div>
+          <h3>Service Performance Dashboard</h3>
+          <p>Service demand, peak booking times, and staff proficiency with revenue per hour metrics.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+
+        <div class="template-card" onclick="launchTemplate('forecast')">
+          <div class="template-image">
+            <svg viewBox="0 0 300 200" class="template-svg">
+              <rect width="300" height="200" fill="#f3f4f6" />
+              <defs>
+                <pattern id="dots" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+                  <circle cx="2" cy="2" r="1" fill="#6b7280" />
+                </pattern>
+              </defs>
+              <path d="M 30 150 L 80 120 L 130 100 L 180 80" stroke="#1f2937" stroke-width="2" fill="none"
+                stroke-dasharray="5,5" />
+              <path d="M 30 150 L 80 100 L 130 90 L 180 70 L 230 60" stroke="#1f2937" stroke-width="3" fill="none" />
+              <circle cx="30" cy="150" r="3" fill="#1f2937" />
+              <circle cx="80" cy="100" r="3" fill="#1f2937" />
+              <circle cx="130" cy="90" r="3" fill="#1f2937" />
+              <circle cx="180" cy="70" r="3" fill="#1f2937" />
+              <circle cx="230" cy="60" r="3" fill="#1f2937" />
+              <text x="150" y="190" text-anchor="middle" font-size="12" fill="#666">AI Forecasting</text>
+            </svg>
+          </div>
+          <h3>Smart AI Analytics Dashboard</h3>
+          <p>Revenue forecasting with moving averages, trend analysis, and predictive insights.</p>
+          <button class="live-demo-btn">See a live demo ↗</button>
+        </div>
+      </div>
+
+      <div class="templates-footer">
+        <button class="view-all-btn">View All Templates →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading data...</p>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="assets/js/bi-dashboard.js"></script>
+  <script src="assets/js/bi-dashboard-integrated.js"></script>
+</body>
+
+</html>
