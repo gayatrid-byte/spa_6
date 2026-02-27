@@ -81,10 +81,17 @@ async function getSettings(req, res) {
         phone: salon.phone,
         email: salon.email,
         gstin: salon.gstin,
-        logoUrl: salon.logo_url
+        logoUrl: salon.logo_url,
+        working_hours_start: salon.working_hours_start,
+        working_hours_end: salon.working_hours_end
       },
       billing: {
-        taxRate: parseFloat(salon.billing_tax_rate || 0),
+        gst_enabled: !!salon.billing_gst_enabled,
+        gst_type: salon.billing_gst_type || 'intra',
+        gst_rate: parseFloat(salon.billing_gst_rate || salon.billing_tax_rate || 0),
+        cgst_rate: parseFloat(salon.billing_cgst_rate || 0),
+        sgst_rate: parseFloat(salon.billing_sgst_rate || 0),
+        igst_rate: parseFloat(salon.billing_igst_rate || 0),
         currency: salon.billing_currency || 'INR',
         invoicePrefix: salon.billing_invoice_prefix || 'INV',
         nextInvoiceNumber: salon.billing_next_invoice_number || 1001
@@ -114,10 +121,17 @@ async function updateSettings(req, res) {
       if (salon.email !== undefined) { updateFields.push('email = ?'); values.push(salon.email); }
       if (salon.gstin !== undefined) { updateFields.push('gstin = ?'); values.push(salon.gstin); }
       if (salon.logoUrl !== undefined) { updateFields.push('logo_url = ?'); values.push(salon.logoUrl); }
+      if (salon.working_hours_start !== undefined) { updateFields.push('working_hours_start = ?'); values.push(salon.working_hours_start); }
+      if (salon.working_hours_end !== undefined) { updateFields.push('working_hours_end = ?'); values.push(salon.working_hours_end); }
     }
     
     if (billing) {
-      if (billing.taxRate !== undefined) { updateFields.push('billing_tax_rate = ?'); values.push(billing.taxRate); }
+      if (billing.gst_enabled !== undefined) { updateFields.push('billing_gst_enabled = ?'); values.push(billing.gst_enabled ? 1 : 0); }
+      if (billing.gst_type !== undefined) { updateFields.push('billing_gst_type = ?'); values.push(billing.gst_type); }
+      if (billing.gst_rate !== undefined) { updateFields.push('billing_gst_rate = ?'); values.push(billing.gst_rate); }
+      if (billing.cgst_rate !== undefined) { updateFields.push('billing_cgst_rate = ?'); values.push(billing.cgst_rate); }
+      if (billing.sgst_rate !== undefined) { updateFields.push('billing_sgst_rate = ?'); values.push(billing.sgst_rate); }
+      if (billing.igst_rate !== undefined) { updateFields.push('billing_igst_rate = ?'); values.push(billing.igst_rate); }
       if (billing.currency !== undefined) { updateFields.push('billing_currency = ?'); values.push(billing.currency); }
       if (billing.invoicePrefix !== undefined) { updateFields.push('billing_invoice_prefix = ?'); values.push(billing.invoicePrefix); }
       if (billing.nextInvoiceNumber !== undefined) { updateFields.push('billing_next_invoice_number = ?'); values.push(billing.nextInvoiceNumber); }

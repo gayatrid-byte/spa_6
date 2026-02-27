@@ -2111,8 +2111,13 @@ const api = {
       });
     },
 
-    delete(id) {
-      return api.request(`/billing/${id}`, { method: 'DELETE' });
+    delete(id, options = {}) {
+      // options.params can be an object of query params
+      let endpoint = `/billing/${id}`;
+      if (options.params) {
+        endpoint = api.buildUrl(endpoint, options.params);
+      }
+      return api.request(endpoint, { method: 'DELETE' });
     },
 
     getAutoItems(filters = {}) {

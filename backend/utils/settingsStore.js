@@ -31,7 +31,12 @@ async function getSettings() {
         logo: salon.logo_url || ''
       },
       billing: {
-        taxRate: parseFloat(salon.billing_tax_rate || 18),
+        gst_enabled: !!salon.billing_gst_enabled,
+        gst_type: salon.billing_gst_type || 'intra',
+        gst_rate: parseFloat(salon.billing_gst_rate || salon.billing_tax_rate || 18),
+        cgst_rate: parseFloat(salon.billing_cgst_rate || 0),
+        sgst_rate: parseFloat(salon.billing_sgst_rate || 0),
+        igst_rate: parseFloat(salon.billing_igst_rate || 0),
         currency: salon.billing_currency || 'INR',
         invoicePrefix: salon.billing_invoice_prefix || 'INV',
         nextInvoiceNumber: salon.billing_next_invoice_number || 1001
@@ -83,7 +88,12 @@ async function updateSettings(partial) {
     }
     
     if (partial.billing) {
-      if (partial.billing.taxRate !== undefined) { updateFields.push('billing_tax_rate = ?'); values.push(partial.billing.taxRate); }
+      if (partial.billing.gst_enabled !== undefined) { updateFields.push('billing_gst_enabled = ?'); values.push(partial.billing.gst_enabled ? 1 : 0); }
+      if (partial.billing.gst_type !== undefined) { updateFields.push('billing_gst_type = ?'); values.push(partial.billing.gst_type); }
+      if (partial.billing.gst_rate !== undefined) { updateFields.push('billing_gst_rate = ?'); values.push(partial.billing.gst_rate); }
+      if (partial.billing.cgst_rate !== undefined) { updateFields.push('billing_cgst_rate = ?'); values.push(partial.billing.cgst_rate); }
+      if (partial.billing.sgst_rate !== undefined) { updateFields.push('billing_sgst_rate = ?'); values.push(partial.billing.sgst_rate); }
+      if (partial.billing.igst_rate !== undefined) { updateFields.push('billing_igst_rate = ?'); values.push(partial.billing.igst_rate); }
       if (partial.billing.currency !== undefined) { updateFields.push('billing_currency = ?'); values.push(partial.billing.currency); }
       if (partial.billing.invoicePrefix !== undefined) { updateFields.push('billing_invoice_prefix = ?'); values.push(partial.billing.invoicePrefix); }
       if (partial.billing.nextInvoiceNumber !== undefined) { updateFields.push('billing_next_invoice_number = ?'); values.push(partial.billing.nextInvoiceNumber); }

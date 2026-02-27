@@ -93,13 +93,45 @@ async function updateInvoiceStatus(req, res) {
 async function deleteInvoice(req, res) {
   try {
     const { id } = req.params;
-    const deleted = await Invoice.delete(id);
+    // Optional query flag to also delete linked bookings referenced by invoice.booking_ids
+    const deleteBookings = req.query.delete_bookings === '1' || req.query.delete_bookings === 'true';
 
-    if (!deleted) {
-      return res.status(404).json({ error: 'Invoice not found' });
+    // Load invoice first to get booking_ids
+    const invoice = await Invoice.getById(id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    // Perform deletion within a transaction to remove invoice, items and optionally bookings
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Delete invoice items
+      await connection.query('DELETE FROM invoice_items WHERE invoice_id = ?', [id]);
+
+      // Delete invoice
+      const [result] = await connection.query('DELETE FROM invoices WHERE id = ?', [id]);
+      if (result.affectedRows === 0) {
+        await connection.rollback();
+        return res.status(404).json({ error: 'Invoice not found when deleting' });
+      }
+
+      if (deleteBookings && Array.isArray(invoice.booking_ids) && invoice.booking_ids.length > 0) {
+        // Delete booking_items and bookings for the IDs listed
+        const ids = invoice.booking_ids.map(id => Number(id)).filter(n => !isNaN(n));
+        if (ids.length > 0) {
+          await connection.query(`DELETE FROM booking_items WHERE booking_id IN (${ids.join(',')})`);
+          await connection.query(`DELETE FROM bookings WHERE id IN (${ids.join(',')})`);
+        }
+      }
+
+      await connection.commit();
+      res.json({ message: 'Invoice deleted successfully', bookings_deleted: deleteBookings });
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
     }
-
-    res.json({ message: 'Invoice deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

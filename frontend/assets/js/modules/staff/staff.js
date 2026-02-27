@@ -2167,33 +2167,6 @@ downloadPDFReport: async function(startDate, endDate, department) {
           <p><strong>Total Late Days:</strong> ${totalLateDays}</p>
           <p><strong>Total Half Days:</strong> ${totalHalfDays}</p>
         </div>
-        
-        ${salonSettings && salonSettings.salon ? `
-        <div class="tax-details">
-          <h3>Tax Information</h3>
-          ${salonSettings.salon.gstin ? `<p><strong>GSTIN:</strong> ${salonSettings.salon.gstin}</p>` : '<p><strong>GSTIN:</strong> Not Available</p>'}
-          <div class="tax-breakdown">
-            <p><strong>SUBTOTAL:</strong> ${(totalPresentDays * 600).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-            <p><strong>Add: CGST @ 9%:</strong> ${(totalPresentDays * 600 * 0.09).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-            <p><strong>Add: SGST @ 9%:</strong> ${(totalPresentDays * 600 * 0.09).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-            <hr style="margin: 10px 0;">
-            <p><strong>Total:</strong> ${(totalPresentDays * 600 * 1.18).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-          </div>
-        </div>
-        ` : `
-        <div class="tax-details">
-          <h3>Tax Information</h3>
-          <p><strong>GSTIN:</strong> Not Available</p>
-          <div class="tax-breakdown">
-            <p><strong>SUBTOTAL:</strong> ${(totalPresentDays * 600).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-            <p><strong>Add: CGST @ 9%:</strong> ${(totalPresentDays * 600 * 0.09).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-            <p><strong>Add: SGST @ 9%:</strong> ${(totalPresentDays * 600 * 0.09).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-            <hr style="margin: 10px 0;">
-            <p><strong>Total:</strong> ${(totalPresentDays * 600 * 1.18).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
-          </div>
-        </div>
-        `}
-        
         <table>
           <thead>
             <tr>

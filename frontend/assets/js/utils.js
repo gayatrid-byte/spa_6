@@ -123,13 +123,6 @@ const utils = {
 
   // Format currency with support for multiple currencies
   formatCurrency(amount, currency = 'INR') {
-    const currencySymbols = {
-      'USD': '₹',
-      'INR': '₹',
-      'EUR': '€',
-      'GBP': '£'
-    };
-
     const options = {
       style: 'currency',
       currency: currency
@@ -152,7 +145,7 @@ const utils = {
   // Get currency symbol
   getCurrencySymbol(currency = 'INR') {
     const symbols = {
-      'USD': '₹',
+      'USD': '$',
       'INR': '₹',
       'EUR': '€',
       'GBP': '£'

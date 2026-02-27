@@ -143,7 +143,7 @@ window.handleCategoryChange = async function (select, index) {
         <option value="${service.id}" 
                 data-price="${service.base_price}" 
                 data-duration="${service.duration_minutes}">
-          ${service.name} (${service.duration_minutes} min - ₹${utils.formatCurrency(service.base_price)})
+          ${service.name} (${service.duration_minutes} min - ${utils.formatCurrency(service.base_price)})
         </option>
       `).join('')}
     `;
@@ -921,7 +921,7 @@ export async function showBookingForm(booking = null) {
               <label for="comboSelect">Available Combos</label>
               <select id="comboSelect" class="form-control" onchange="handleAddCombo(this)">
                 <option value="">-- Apply a Combo Offer --</option>
-                ${combos.map(c => `<option value="${c.id}">${c.name} (₹${utils.formatCurrency(c.combo_price)})</option>`).join('')}
+                ${combos.map(c => `<option value="${c.id}">${c.name} (${utils.formatCurrency(c.combo_price)})</option>`).join('')}
               </select>
               <small class="text-muted">Selecting a combo will add its services to the list below.</small>
             </div>
@@ -953,23 +953,23 @@ export async function showBookingForm(booking = null) {
               </div>
               <div class="summary-row">
                 <span>Subtotal:</span>
-                <span id="subtotalAmount">₹0.00</span>
+                <span id="subtotalAmount">0.00</span>
               </div>
               <div class="summary-row">
                 <span>Tax (5%):</span>
-                <span id="taxAmount">₹0.00</span>
+                <span id="taxAmount">0.00</span>
               </div>
               <div class="summary-row">
                 <span>Discount:</span>
-                <span id="discountDisplay">₹0.00</span>
+                <span id="discountDisplay">0.00</span>
               </div>
               <div class="summary-row">
                 <span>Wallet Applied:</span>
-                <span id="walletAppliedDisplay">₹0.00</span>
+                <span id="walletAppliedDisplay">0.00</span>
               </div>
               <div class="summary-row total">
                 <span>Total Amount:</span>
-                <span id="totalAmount">₹0.00</span>
+                <span id="totalAmount">0.00</span>
               </div>
               <div class="summary-row">
                 <span>Total Duration:</span>
@@ -1053,7 +1053,7 @@ function renderServiceItem(item = null, index) {
       services[item.subcategory_id].map(s => `
                 <option value="${s.id}" ${item.service_id === s.id ? 'selected' : ''} 
                         data-price="${s.base_price}" data-duration="${s.duration_minutes}">
-                  ${s.name} (${s.duration_minutes} min - ₹${utils.formatCurrency(s.base_price)})
+                  ${s.name} (${s.duration_minutes} min - ${utils.formatCurrency(s.base_price)})
                 </option>
               `).join('') : ''}
           </select>
@@ -1319,7 +1319,7 @@ window.loadServices = async function (select, index) {
         <option value="${service.id}" 
                 data-price="${service.base_price}" 
                 data-duration="${service.duration_minutes}">
-          ${service.name} (${service.duration_minutes} min - ₹${utils.formatCurrency(service.base_price)})
+          ${service.name} (${service.duration_minutes} min - ${utils.formatCurrency(service.base_price)})
         </option>
       `).join('')}
     `;
@@ -1417,7 +1417,7 @@ async function loadStaff(serviceId, index) {
       }
     }
 
-    // Fetch staff filtered by department when available
+    // Fetch all staff for department (or all if no department)
     const allStaff = await api.staff.getAll(department ? { department } : {});
 
     // Determine booking date for attendance filtering
@@ -1426,7 +1426,6 @@ async function loadStaff(serviceId, index) {
 
     // Get present staff attendance records for the date
     const attendance = await api.staff.getAttendance({ date: bookingDate, status: 'present' });
-    // If department is known, filter attendance by department client-side
     const attendanceFiltered = department ? attendance.filter(a => a.department === department) : attendance;
     const presentIds = new Set(attendanceFiltered.map(a => a.staff_id));
 
@@ -1434,34 +1433,21 @@ async function loadStaff(serviceId, index) {
     const leaves = await api.staff.getLeaves({ date: bookingDate, status: 'approved' });
     const onLeaveIds = new Set(leaves.map(l => l.staff_id));
 
-    // Filter by attendance and approved leave
-    let availableStaff = allStaff.filter(s => presentIds.has(s.id) && !onLeaveIds.has(s.id));
-
-    // Finally, filter by service qualification (services_qualified contains service IDs)
+    // Filter by service qualification (services_qualified contains service IDs)
     const targetServiceId = parseInt(serviceId);
-    availableStaff = availableStaff.filter(s => parseQualifiedList(s.services_qualified).includes(targetServiceId));
+    const qualifiedStaff = allStaff.filter(s => parseQualifiedList(s.services_qualified).includes(targetServiceId));
 
-    // If overly restrictive (e.g., department name mismatch), retry without department filter
-    if (availableStaff.length === 0) {
-      const allStaffNoDept = await api.staff.getAll();
-      const attendanceNoDept = await api.staff.getAttendance({ date: bookingDate, status: 'present' });
-      const presentIdsNoDept = new Set(attendanceNoDept.map(a => a.staff_id));
-      const leavesNoDept = await api.staff.getLeaves({ date: bookingDate, status: 'approved' });
-      const onLeaveIdsNoDept = new Set(leavesNoDept.map(l => l.staff_id));
-      let retryStaff = allStaffNoDept.filter(s => presentIdsNoDept.has(s.id) && !onLeaveIdsNoDept.has(s.id));
-      retryStaff = retryStaff.filter(s => parseQualifiedList(s.services_qualified).includes(targetServiceId));
-      availableStaff = retryStaff;
-    }
     // Cache for pre-populating when editing
-    staff[serviceId] = availableStaff;
+    staff[serviceId] = qualifiedStaff;
     staffSelect.innerHTML = `
       <option value="">Select Staff (Optional)</option>
-      ${availableStaff.map(s => `
-        <option value="${s.id}">${s.name} - ${s.department}</option>
-      `).join('')}
+      ${qualifiedStaff.map(s => {
+        let status = presentIds.has(s.id) ? '' : (onLeaveIds.has(s.id) ? ' (On Leave)' : ' (Absent)');
+        return `<option value="${s.id}">${s.name} - ${s.department}${status}</option>`;
+      }).join('')}
     `;
-    if (availableStaff.length === 0) {
-      staffSelect.insertAdjacentHTML('beforeend', '<option disabled>(No present staff for selected date)</option>');
+    if (qualifiedStaff.length === 0) {
+      staffSelect.insertAdjacentHTML('beforeend', '<option disabled>(No qualified staff for this service)</option>');
     }
   } catch (error) {
     console.error('Error loading staff:', error);
@@ -1470,8 +1456,10 @@ async function loadStaff(serviceId, index) {
 }
 
 async function loadStaffForItem(serviceId, index) {
+  const serviceItem = document.querySelector(`.service-item[data-index="${index}"]`);
+  const staffSelect = serviceItem.querySelector('.staff-select');
   try {
-    // For edit mode, infer department via service details
+    // Infer department via service details
     let department = '';
     try {
       const svcDetail = await api.services.getById(serviceId);
@@ -1481,7 +1469,7 @@ async function loadStaffForItem(serviceId, index) {
     }
     const allStaff = await api.staff.getAll(department ? { department } : {});
 
-    // Attendance filtering for the booked date
+    // Attendance and leave for status
     let bookingDate = document.getElementById('bookingDate')?.value || '';
     if (!bookingDate) bookingDate = utils.getTodayDate();
     const attendance = await api.staff.getAttendance({ date: bookingDate, status: 'present' });
@@ -1489,28 +1477,26 @@ async function loadStaffForItem(serviceId, index) {
     const presentIds = new Set(attendanceFiltered.map(a => a.staff_id));
     const leaves = await api.staff.getLeaves({ date: bookingDate, status: 'approved' });
     const onLeaveIds = new Set(leaves.map(l => l.staff_id));
-    // Filter by attendance and approved leave
-    let availableStaff = allStaff.filter(s => presentIds.has(s.id) && !onLeaveIds.has(s.id));
-    // Filter by qualification
+
+    // Filter by service qualification (services_qualified contains service IDs)
     const targetServiceId = parseInt(serviceId);
-    availableStaff = availableStaff.filter(s => parseQualifiedList(s.services_qualified).includes(targetServiceId));
+    const qualifiedStaff = allStaff.filter(s => parseQualifiedList(s.services_qualified).includes(targetServiceId));
 
-    // Fallback without department if no matches
-    if (availableStaff.length === 0) {
-      const allStaffNoDept = await api.staff.getAll();
-      const attendanceNoDept = await api.staff.getAttendance({ date: bookingDate, status: 'present' });
-      const presentIdsNoDept = new Set(attendanceNoDept.map(a => a.staff_id));
-      const leavesNoDept = await api.staff.getLeaves({ date: bookingDate, status: 'approved' });
-      const onLeaveIdsNoDept = new Set(leavesNoDept.map(l => l.staff_id));
-      let retryStaff = allStaffNoDept.filter(s => presentIdsNoDept.has(s.id) && !onLeaveIdsNoDept.has(s.id));
-      retryStaff = retryStaff.filter(s => parseQualifiedList(s.services_qualified).includes(targetServiceId));
-      staff[serviceId] = retryStaff;
-      return;
+    // Cache for pre-populating when editing
+    staff[serviceId] = qualifiedStaff;
+    staffSelect.innerHTML = `
+      <option value="">Select Staff (Optional)</option>
+      ${qualifiedStaff.map(s => {
+        let status = presentIds.has(s.id) ? '' : (onLeaveIds.has(s.id) ? ' (On Leave)' : ' (Absent)');
+        return `<option value="${s.id}">${s.name} - ${s.department}${status}</option>`;
+      }).join('')}
+    `;
+    if (qualifiedStaff.length === 0) {
+      staffSelect.insertAdjacentHTML('beforeend', '<option disabled>(No qualified staff for this service)</option>');
     }
-
-    staff[serviceId] = availableStaff;
   } catch (error) {
     console.error('Error loading staff:', error);
+    staffSelect.innerHTML = '<option value="">Error loading staff</option>';
   }
 }
 
@@ -1544,12 +1530,12 @@ window.calculateSummary = function () {
   }
 
   // Update display (Booking summary shows subtotal, tax, total only — wallet only applies at invoice stage)
-  document.getElementById('subtotalAmount').textContent = `₹${utils.formatCurrency(subtotal)}`;
-  document.getElementById('taxAmount').textContent = `₹${utils.formatCurrency(tax)}`;
-  document.getElementById('discountDisplay').textContent = `₹0.00`;
+  document.getElementById('subtotalAmount').textContent = `${utils.formatCurrency(subtotal)}`;
+  document.getElementById('taxAmount').textContent = `${utils.formatCurrency(tax)}`;
+  document.getElementById('discountDisplay').textContent = `0.00`;
   // Keep wallet display but show zero to avoid confusion
-  document.getElementById('walletAppliedDisplay').textContent = `₹0.00`;
-  document.getElementById('totalAmount').textContent = `₹${utils.formatCurrency(total)}`;
+  document.getElementById('walletAppliedDisplay').textContent = `0.00`;
+  document.getElementById('totalAmount').textContent = `${utils.formatCurrency(total)}`;
   document.getElementById('totalDuration').textContent = `${totalDuration} minutes`;
   document.getElementById('endTime').textContent = endTime;
 
@@ -1641,7 +1627,7 @@ window.bookingsModule = {
                   <span>Room: ${item.room_name || 'N/A'}</span>
                   <span>Staff: ${item.staff_name || 'N/A'}</span>
                   <span>Duration: ${item.duration_minutes} min</span>
-                  <span>Price: ₹${utils.formatCurrency(item.price)}</span>
+                  <span>Price: ${utils.formatCurrency(item.price)}</span>
                 </div>
                 ${item.notes ? `<p class="service-notes"><em>${item.notes}</em></p>` : ''}
               </div>
@@ -1653,15 +1639,15 @@ window.bookingsModule = {
             <div class="payment-summary">
               <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>₹${utils.formatCurrency(booking.subtotal_amount)}</span>
+                <span>${utils.formatCurrency(booking.subtotal_amount)}</span>
               </div>
               <div class="summary-row">
                 <span>Tax (5%):</span>
-                <span>₹${utils.formatCurrency(booking.tax_amount || 0)}</span>
+                <span>${utils.formatCurrency(booking.tax_amount || 0)}</span>
               </div>
               <div class="summary-row total">
                 <span>Total Amount:</span>
-                <span>₹${utils.formatCurrency(booking.total_amount)}</span>
+                <span>${utils.formatCurrency(booking.total_amount)}</span>
               </div>
             </div>
           </div>

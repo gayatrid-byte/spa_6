@@ -116,10 +116,22 @@ async function loadCalendarFilters() {
 /* =========================================================
    INIT CALENDAR
    ========================================================= */
-function initCalendar() {
-
+async function initCalendar() {
   const calendarEl = document.getElementById('calendar');
   if (!calendarEl) return;
+
+  // Fetch working hours from settings
+  let working_hours_start = '08:00';
+  let working_hours_end = '22:00';
+  try {
+    const settings = await api.settings.get();
+    if (settings && settings.salon) {
+      if (settings.salon.working_hours_start) working_hours_start = settings.salon.working_hours_start;
+      if (settings.salon.working_hours_end) working_hours_end = settings.salon.working_hours_end;
+    }
+  } catch (e) {
+    // fallback to defaults
+  }
 
   if (window.calendarInstance) {
     window.calendarInstance.destroy();
@@ -127,59 +139,41 @@ function initCalendar() {
   }
 
   window.calendarInstance = new FullCalendar.Calendar(calendarEl, {
-
     initialView: 'timeGridDay',
     selectable: true,
     editable: true,
     nowIndicator: true,
-
     height: 750,
     contentHeight: 750,
     expandRows: true,
-
     stickyHeaderDates: true,
     handleWindowResize: false,
-
+    slotMinTime: working_hours_start,
+    slotMaxTime: working_hours_end,
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
       right: 'dayGridMonth,timeGridWeek,timeGridDay'
     },
-
-    /* ================================
-       EVENTS LOAD
-    ================================= */
     events: async (info, successCallback) => {
       try {
-
         const staffId = document.getElementById('staffFilter')?.value || '';
         const roomId = document.getElementById('roomFilter')?.value || '';
-
-        // Build query parameters
         const params = new URLSearchParams({
           start: info.startStr.slice(0, 10),
           end: info.endStr.slice(0, 10)
         });
-
         if (staffId) params.append('staff_id', staffId);
         if (roomId) params.append('room_id', roomId);
-
         const events = await api.request(`/calendar/events?${params.toString()}`);
-
         successCallback(events);
-
       } catch (err) {
         console.error('Calendar load error:', err);
         successCallback([]);
       }
     },
-
-    /* ================================
-       DRAG & DROP
-    ================================= */
     eventDrop: async function (info) {
       try {
-
         await api.request(`/calendar/events/${info.event.id}`, {
           method: 'PUT',
           body: JSON.stringify({
@@ -188,21 +182,14 @@ function initCalendar() {
             end_time: info.event.endStr.slice(11, 16)
           })
         });
-
         utils.showToast("Booking updated", "success");
-
       } catch (err) {
         info.revert();
         utils.showToast("Update failed", "error");
       }
     },
-
-    /* ================================
-       RESIZE
-    ================================= */
     eventResize: async function (info) {
       try {
-
         await api.request(`/calendar/events/${info.event.id}`, {
           method: 'PUT',
           body: JSON.stringify({
@@ -211,21 +198,14 @@ function initCalendar() {
             end_time: info.event.endStr.slice(11, 16)
           })
         });
-
         utils.showToast("Duration updated", "success");
-
       } catch (err) {
         info.revert();
         utils.showToast("Resize failed", "error");
       }
     },
-
-    /* ================================
-       STATUS COLOR
-    ================================= */
     eventDidMount: function (info) {
       const status = info.event.extendedProps.status;
-
       if (status === 'confirmed') {
         info.el.style.backgroundColor = '#dc3545';
       }
@@ -236,35 +216,24 @@ function initCalendar() {
         info.el.style.backgroundColor = '#28a745';
       }
     },
-
-    /* ================================
-       VIEW BASED SCROLL CONTROL
-    ================================= */
     viewDidMount: function (info) {
-
       const wrapper = document.getElementById('calendarWrapper');
-
       if (info.view.type === 'dayGridMonth') {
         wrapper.style.overflowY = 'hidden';   // Month no scroll
       } else {
         wrapper.style.overflowY = 'auto';     // Week & Day scroll
       }
     },
-
     dateClick(info) {
       openBookingFromCalendar(info.date);
     },
-
     select(info) {
       openBookingFromCalendar(info.start);
     },
-
     eventClick(info) {
       openEventDetails(info.event);
     }
-
   });
-
   window.calendarInstance.render();
 }
 

@@ -282,9 +282,7 @@ function renderServicesView() {
       
       <div class="tabs">
         <div class="tab-header">
-          <button class="tab-btn active" data-tab="active">Active Services (${activeServices.length})</button>
-          <button class="tab-btn" data-tab="inactive">Inactive Services (${inactiveServices.length})</button>
-        </div>
+                </div>
         <div class="tab-content">
           <div class="tab-pane active" id="tab-active">
             ${renderServicesTable(activeServices)}

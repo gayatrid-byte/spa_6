@@ -9,42 +9,42 @@ let currentTabData = null;
 export async function render(container) {
   container.innerHTML = `
         <style>
-            .dash-wrap { font-family: 'Inter', system-ui, sans-serif; color: #f1f5f9; }
+            .dash-wrap { font-family: 'Inter', system-ui, sans-serif; color: var(--color-text-primary); }
             .kpi-grid { display: grid; gap: 20px; margin-bottom: 28px; }
-            .kpi-card { background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.08); padding: 24px; border-radius: 16px; backdrop-filter: blur(12px); transition: transform 0.2s, border-color 0.2s; }
-            .kpi-card:hover { transform: translateY(-3px); border-color: rgba(124,58,237,0.4); }
-            .kpi-card::before { content:''; display:block; height:3px; background: linear-gradient(90deg,#7c3aed,#06b6d4); border-radius:2px; margin-bottom:16px; }
-            .kpi-label { color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 6px; }
-            .kpi-value { font-size: 1.9rem; font-weight: 800; color: #f8fafc; line-height: 1; }
-            .chart-box { background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.08); padding: 24px; border-radius: 16px; margin-bottom: 24px; }
-            .chart-box h3 { font-size: 1rem; font-weight: 600; margin: 0 0 20px; color: #e2e8f0; display:flex; align-items:center; gap:8px; }
-            .tab-btn { padding: 10px 20px; border: 1px solid rgba(255,255,255,0.06); background: rgba(15,23,42,0.5); color: #64748b; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: 0.2s; white-space: nowrap; }
-            .tab-btn:hover { color: #cbd5e1; background: rgba(124,58,237,0.1); }
-            .tab-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; box-shadow: 0 4px 14px rgba(124,58,237,0.35); }
-            .ledger-wrap { background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.08); padding: 24px; border-radius: 16px; }
+            .kpi-card { background: var(--color-bg-card); border: 1px solid var(--color-border-card); padding: 24px; border-radius: 16px; backdrop-filter: blur(12px); transition: transform 0.2s, border-color 0.2s, background 0.3s; }
+            .kpi-card:hover { transform: translateY(-3px); border-color: rgba(124,58,237,0.4); background: var(--color-bg-card-hover); }
+            .kpi-card::before { content:''; display:block; height:3px; background: linear-gradient(90deg, var(--color-primary), var(--color-info)); border-radius:2px; margin-bottom:16px; }
+            .kpi-label { color: var(--color-text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 6px; }
+            .kpi-value { font-size: 1.9rem; font-weight: 800; color: var(--color-text-primary); line-height: 1; }
+            .chart-box { background: var(--color-bg-card); border: 1px solid var(--color-border-card); padding: 24px; border-radius: 16px; margin-bottom: 24px; transition: background 0.3s, border-color 0.3s; }
+            .chart-box h3 { font-size: 1rem; font-weight: 600; margin: 0 0 20px; color: var(--color-text-heading); display:flex; align-items:center; gap:8px; }
+            .tab-btn { padding: 10px 20px; border: 1px solid var(--color-border-card); background: var(--color-bg-body); color: var(--color-text-muted); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: 0.2s; white-space: nowrap; }
+            .tab-btn:hover { color: var(--color-text-secondary); background: rgba(124,58,237,0.1); }
+            .tab-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 4px 14px rgba(124,58,237,0.35); }
+            .ledger-wrap { background: var(--color-bg-card); border: 1px solid var(--color-border-card); padding: 24px; border-radius: 16px; transition: background 0.3s, border-color 0.3s; }
             .data-table { width: 100%; border-collapse: collapse; }
-            .data-table th { background: rgba(15,23,42,0.6); color: #64748b; font-size: 0.72rem; padding: 14px 16px; text-align: left; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; top: 0; }
-            .data-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.88rem; color: #cbd5e1; }
-            .data-table tbody tr:hover { background: rgba(124,58,237,0.04); }
-            .f-select { background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.08); color: #e2e8f0; padding: 9px 14px; border-radius: 8px; font-size: 0.85rem; outline: none; min-width: 130px; }
-            .f-select:focus { border-color: #7c3aed; }
-            .btn-apply { background: #7c3aed; color: #fff; padding: 9px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 0.85rem; display:flex; align-items:center; gap:6px; }
-            .btn-apply:hover { background: #6d28d9; }
-            .btn-export { background: none; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-            .btn-export:hover { border-color: #10b981; color: #10b981; }
-            .no-data { text-align:center; padding: 60px 20px; color: #475569; font-size: 0.9rem; }
-            .status-ok { color: #10b981; font-weight: 700; }
-            .status-warn { color: #f59e0b; font-weight: 700; }
-            .status-bad { color: #ef4444; font-weight: 700; }
-            .ai-panel { background: rgba(124,58,237,0.04); border: 1px dashed rgba(124,58,237,0.25); padding: 24px; border-radius: 16px; margin-top: 24px; }
-            .ai-insight { background: rgba(124,58,237,0.06); border: 1px solid rgba(124,58,237,0.15); padding: 16px; border-radius: 10px; font-size: 0.85rem; line-height: 1.6; color: #cbd5e1; }
+            .data-table th { background: var(--color-bg-table-header); color: var(--color-text-muted); font-size: 0.72rem; padding: 14px 16px; text-align: left; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; top: 0; }
+            .data-table td { padding: 14px 16px; border-bottom: 1px solid var(--color-border-subtle); font-size: 0.88rem; color: var(--color-text-secondary); }
+            .data-table tbody tr:hover { background: var(--color-bg-table-hover); }
+            .f-select { background: var(--color-bg-input); border: 1px solid var(--color-border-input); color: var(--color-text-primary); padding: 9px 14px; border-radius: 8px; font-size: 0.85rem; outline: none; min-width: 130px; transition: border-color 0.3s, background 0.3s; }
+            .f-select:focus { border-color: var(--color-primary); }
+            .btn-apply { background: var(--color-primary); color: #fff; padding: 9px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 0.85rem; display:flex; align-items:center; gap:6px; }
+            .btn-apply:hover { background: var(--color-primary-dark); }
+            .btn-export { background: none; border: 1px solid var(--color-border-input); color: var(--color-text-secondary); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: border-color 0.2s, color 0.2s; }
+            .btn-export:hover { border-color: var(--color-accent); color: var(--color-accent); }
+            .no-data { text-align:center; padding: 60px 20px; color: var(--color-text-muted); font-size: 0.9rem; }
+            .status-ok { color: var(--color-success); font-weight: 700; }
+            .status-warn { color: var(--color-warning); font-weight: 700; }
+            .status-bad { color: var(--color-danger); font-weight: 700; }
+            .ai-panel { background: rgba(124,58,237,0.04); border: 1px dashed rgba(124,58,237,0.25); padding: 24px; border-radius: 16px; margin-top: 24px; transition: background 0.3s; }
+            .ai-insight { background: rgba(124,58,237,0.06); border: 1px solid rgba(124,58,237,0.15); padding: 16px; border-radius: 10px; font-size: 0.85rem; line-height: 1.6; color: var(--color-text-secondary); }
         </style>
 
         <div class="dash-wrap">
             <!-- Filters -->
-            <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-4 rounded" style="background:rgba(15,23,42,0.5); border:1px solid rgba(255,255,255,0.05)">
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-4 rounded" style="background:var(--color-bg-card); border:1px solid var(--color-border-card)">
                 <input type="date" id="dashStart" class="f-select">
-                <span style="color:#475569">→</span>
+                <span style="color:var(--color-text-muted)">→</span>
                 <input type="date" id="dashEnd" class="f-select">
                 <select id="filterStaff" class="f-select"><option value="">All Staff</option></select>
                 <select id="filterService" class="f-select"><option value="">All Services</option></select>
@@ -77,13 +77,13 @@ export async function render(container) {
             <div class="row mb-4">
                 <div class="col-lg-8">
                     <div class="chart-box" style="height:400px">
-                        <h3 id="mainChartTitle"><i class="fas fa-chart-area" style="color:#7c3aed"></i> Trend Analysis</h3>
+                        <h3 id="mainChartTitle"><i class="fas fa-chart-area" style="color:var(--color-primary)"></i> Trend Analysis</h3>
                         <div style="height:310px; position:relative"><canvas id="mainChart"></canvas><div id="mainNoData" class="no-data d-none">No data for this period</div></div>
                     </div>
                 </div>
                 <div class="col-lg-4">
                     <div class="chart-box" style="height:400px">
-                        <h3 id="sideChartTitle"><i class="fas fa-chart-pie" style="color:#06b6d4"></i> Distribution</h3>
+                        <h3 id="sideChartTitle"><i class="fas fa-chart-pie" style="color:var(--color-info)"></i> Distribution</h3>
                         <div style="height:310px; position:relative"><canvas id="sideChart"></canvas><div id="sideNoData" class="no-data d-none">No data available</div></div>
                     </div>
                 </div>
@@ -92,10 +92,10 @@ export async function render(container) {
             <!-- Ledger -->
             <div class="ledger-wrap">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3 id="tableTitle" class="m-0" style="font-size:1rem; font-weight:700; color:#e2e8f0"><i class="fas fa-table" style="color:#7c3aed"></i> Analytics Ledger</h3>
+                    <h3 id="tableTitle" class="m-0" style="font-size:1rem; font-weight:700; color:var(--color-text-heading)"><i class="fas fa-table" style="color:var(--color-primary)"></i> Analytics Ledger</h3>
                     <input type="text" id="tableSearch" placeholder="Search..." class="f-select" style="width:220px">
                 </div>
-                <div style="max-height:480px; overflow-y:auto; border-radius:8px; border:1px solid rgba(255,255,255,0.05)">
+                <div style="max-height:480px; overflow-y:auto; border-radius:8px; border:1px solid var(--color-border-subtle)">
                     <table class="data-table"><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table>
                 </div>
             </div>
@@ -103,8 +103,8 @@ export async function render(container) {
             <!-- AI Panel -->
             <div class="ai-panel mt-4" id="aiPanel" style="display:none">
                 <div class="d-flex align-items-center gap-3 mb-3">
-                    <span style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;padding:3px 12px;border-radius:20px;font-size:0.7rem;font-weight:800;text-transform:uppercase">AI Engine</span>
-                    <h4 class="m-0" style="font-weight:700; color:#a78bfa">Predictive Intelligence</h4>
+                    <span style="background:linear-gradient(135deg,var(--color-primary),var(--color-info));color:#fff;padding:3px 12px;border-radius:20px;font-size:0.7rem;font-weight:800;text-transform:uppercase">AI Engine</span>
+                    <h4 class="m-0" style="font-weight:700; color:var(--color-primary-hover)">Predictive Intelligence</h4>
                 </div>
                 <div id="aiContent" class="row g-3"></div>
             </div>
@@ -172,8 +172,8 @@ async function loadDashboard(tab) {
   const branch = document.getElementById('filterBranch').value;
 
   const kpiRow = document.getElementById('kpiRow');
-  kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#475569">
-        <i class="fas fa-circle-notch fa-spin" style="font-size:1.5rem;color:#7c3aed"></i>
+  kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--color-text-muted)">
+        <i class="fas fa-circle-notch fa-spin" style="font-size:1.5rem;color:var(--color-primary)"></i>
         <p class="mt-2 mb-0">Loading live analytics...</p></div>`;
 
   try {
@@ -182,7 +182,7 @@ async function loadDashboard(tab) {
     const data = await r.json();
 
     if (!r.ok) {
-      kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#ef4444">
+      kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--color-danger)">
                 <i class="fas fa-exclamation-triangle"></i> API Error: ${data.error || 'Unknown error'}</div>`;
       return;
     }
@@ -194,7 +194,7 @@ async function loadDashboard(tab) {
     renderAI(tab, data);
   } catch (err) {
     console.error('Dashboard load error:', err);
-    kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#ef4444">
+    kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--color-danger)">
             <i class="fas fa-wifi"></i> Connection error. Is the server running?</div>`;
   }
 }
@@ -313,10 +313,10 @@ function renderCharts(tab, data) {
 
   const baseOpts = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: { size: 11 }, padding: 16 } } },
+    plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim() || '#64748b', font: { size: 11 }, padding: 16 } } },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', maxTicksLimit: 12 } },
-      y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569' } }
+      x: { grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-border-subtle').trim() || 'rgba(255,255,255,0.03)' }, ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim() || '#475569', maxTicksLimit: 12 } },
+      y: { grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-border-subtle').trim() || 'rgba(255,255,255,0.03)' }, ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim() || '#475569' } }
     }
   };
   const noScales = { ...baseOpts, scales: {} };
@@ -420,7 +420,7 @@ function renderTable(tab, data) {
   const title = document.getElementById('tableTitle');
 
   const tbl = Array.isArray(data.table) ? data.table : [];
-  title.innerHTML = `<i class="fas fa-table" style="color:#7c3aed"></i> ${tab.charAt(0).toUpperCase() + tab.slice(1)} Ledger`;
+  title.innerHTML = `<i class="fas fa-table" style="color:var(--color-primary)"></i> ${tab.charAt(0).toUpperCase() + tab.slice(1)} Ledger`;
 
   if (!tbl.length) {
     head.innerHTML = '';
@@ -499,7 +499,7 @@ function renderAI(tab, data) {
   content.innerHTML = insights.map(ins => `
         <div class="col-md-4">
             <div class="ai-insight">
-                <i class="fas fa-lightbulb" style="color:#f59e0b;margin-right:8px"></i>${ins}
+                <i class="fas fa-lightbulb" style="color:var(--color-warning);margin-right:8px"></i>${ins}
             </div>
         </div>
     `).join('');
