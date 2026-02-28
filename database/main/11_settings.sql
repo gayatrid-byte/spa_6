@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS salons (
   country VARCHAR(100),
   phone VARCHAR(50),
   email VARCHAR(255),
+  working_hours_start TIME DEFAULT '08:00:00',
+  working_hours_end TIME DEFAULT '22:00:00',
   timezone VARCHAR(100) DEFAULT 'UTC',
   currency VARCHAR(10) DEFAULT 'INR',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -26,10 +26,18 @@ CREATE TABLE IF NOT EXISTS `salons` (
   `email` VARCHAR(255) NULL,
   `gstin` VARCHAR(15) NULL COMMENT '15-character alphanumeric code for tax identification',
   `logo_url` VARCHAR(500) NULL,
+  `working_hours_start` TIME DEFAULT '08:00:00',
+  `working_hours_end` TIME DEFAULT '22:00:00',
   `billing_currency` VARCHAR(3) NOT NULL DEFAULT 'INR',
   `billing_tax_rate` DECIMAL(5,2) NOT NULL DEFAULT 18.00,
   `billing_invoice_prefix` VARCHAR(10) NOT NULL DEFAULT 'INV',
   `billing_next_invoice_number` INT UNSIGNED NOT NULL DEFAULT 1001,
+  `billing_gst_enabled` TINYINT(1) DEFAULT 1,
+  `billing_gst_type` VARCHAR(10) DEFAULT 'intra',
+  `billing_gst_rate` DECIMAL(5,2) DEFAULT 18.00,
+  `billing_cgst_rate` DECIMAL(5,2) DEFAULT 9.00,
+  `billing_sgst_rate` DECIMAL(5,2) DEFAULT 9.00,
+  `billing_igst_rate` DECIMAL(5,2) DEFAULT 18.00,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -483,6 +491,8 @@ CREATE TABLE IF NOT EXISTS `invoices` (
   `salon_id` INT UNSIGNED NOT NULL,
   `invoice_number` VARCHAR(50) NOT NULL,
   `customer_id` INT UNSIGNED NULL,
+  `membership_id` INT NULL,
+  `membership_plan` VARCHAR(255) NULL,
   `invoice_date` DATE NOT NULL,
   `subtotal` DECIMAL(10,2) NOT NULL DEFAULT 0,
   `tax` DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -492,8 +502,11 @@ CREATE TABLE IF NOT EXISTS `invoices` (
   `notes` TEXT NULL,
   `booking_ids` JSON NULL,
   `payment_methods` JSON NULL,
+  `wallet_applied` DECIMAL(10,2) NOT NULL DEFAULT 0,
+  `payment_source` VARCHAR(50) NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `cash_paid` DECIMAL(10,2) DEFAULT 0.00,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `invoice_number` (`invoice_number` ASC),
   INDEX `idx_salon_id` (`salon_id` ASC),
@@ -1330,8 +1343,21 @@ ORDER BY b.booking_date, b.start_time;
 -- =====================================================
 
 -- Insert default salon
-INSERT INTO `salons` (`id`, `name`, `billing_currency`, `billing_tax_rate`, `billing_invoice_prefix`, `billing_next_invoice_number`) VALUES
-(1, 'Salon Management System', 'INR', 18.00, 'INV', 1001)
+INSERT INTO `salons` (
+  `id`,
+  `name`,
+  `billing_currency`,
+  `billing_tax_rate`,
+  `billing_invoice_prefix`,
+  `billing_next_invoice_number`,
+  `billing_gst_enabled`,
+  `billing_gst_type`,
+  `billing_gst_rate`,
+  `billing_cgst_rate`,
+  `billing_sgst_rate`,
+  `billing_igst_rate`
+) VALUES
+(1, 'Salon Management System', 'INR', 18.00, 'INV', 1001, 1, 'intra', 18.00, 9.00, 9.00, 18.00)
 ON DUPLICATE KEY UPDATE `id` = `id`;
 
 -- Insert default admin user (password: admin123)

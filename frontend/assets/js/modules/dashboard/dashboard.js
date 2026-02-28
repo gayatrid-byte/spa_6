@@ -101,13 +101,7 @@ export async function render(container) {
             </div>
 
             <!-- AI Panel -->
-            <div class="ai-panel mt-4" id="aiPanel" style="display:none">
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <span style="background:linear-gradient(135deg,var(--color-primary),var(--color-info));color:#fff;padding:3px 12px;border-radius:20px;font-size:0.7rem;font-weight:800;text-transform:uppercase">AI Engine</span>
-                    <h4 class="m-0" style="font-weight:700; color:var(--color-primary-hover)">Predictive Intelligence</h4>
-                </div>
-                <div id="aiContent" class="row g-3"></div>
-            </div>
+            <!-- AI Panel removed as requested -->
         </div>
     `;
 
@@ -191,7 +185,7 @@ async function loadDashboard(tab) {
     renderKPIs(tab, data);
     renderCharts(tab, data);
     renderTable(tab, data);
-    renderAI(tab, data);
+    // renderAI(tab, data); // AI panel removed
   } catch (err) {
     console.error('Dashboard load error:', err);
     kpiRow.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--color-danger)">
@@ -447,63 +441,7 @@ function renderTable(tab, data) {
   }).join('')}</tr>`).join('');
 }
 
-function renderAI(tab, data) {
-  const panel = document.getElementById('aiPanel');
-  const content = document.getElementById('aiContent');
-  panel.style.display = 'block';
-
-  const insightMap = {
-    revenue: [
-      "Revenue trajectory shows consistent growth. Consider upselling premium services on peak days.",
-      "Payment method analysis: Promote digital payments to reduce cash handling overhead.",
-      "Discount rate is within acceptable range. Monitor for margin compression."
-    ],
-    bookings: [
-      "Peak hours identified. Ensure full staff coverage during high-demand slots.",
-      "Cancellation rate analysis: Consider implementing a deposit policy to reduce no-shows.",
-      "Booking volume trend suggests weekend demand surge. Pre-schedule staff accordingly."
-    ],
-    customers: [
-      `${(Array.isArray(data.table) ? data.table : []).filter(r => n(r.churn_score) > 60).length} customers are at high churn risk. Send re-engagement offers immediately.`,
-      "Repeat customer segment drives the majority of revenue. Invest in loyalty programs.",
-      "Average CLV is stable. Focus on moving 'New' customers into the 'Repeat' segment."
-    ],
-    staff: [
-      "Staff productivity variance detected. Consider cross-training for lower performers.",
-      "Top performer generates significantly higher revenue. Identify and replicate their approach.",
-      "Commission structure review recommended to align incentives with business goals."
-    ],
-    memberships: [
-      "Active membership base is healthy. Focus on renewal campaigns 14 days before expiry.",
-      "Expired memberships represent a re-engagement opportunity. Offer renewal discounts.",
-      "Consider tiered membership plans to increase average revenue per member."
-    ],
-    profit: [
-      "Profit margin is within target range. Monitor expense categories for optimization.",
-      "Expense split analysis: Identify the highest cost center for reduction opportunities.",
-      "Monthly trend shows seasonal patterns. Plan cash flow accordingly."
-    ],
-    services: [
-      "Top services by revenue should be promoted in marketing campaigns.",
-      "Low-popularity, high-margin services need better visibility at point of sale.",
-      "Service duration optimization can increase daily booking capacity by 15-20%."
-    ],
-    forecast: [
-      "30-day revenue forecast based on 60-day moving average with seasonal smoothing.",
-      "High churn probability customers should be contacted within 48 hours.",
-      "Predictive model confidence is 91%. Actual variance expected within ±8%."
-    ]
-  };
-
-  const insights = insightMap[tab] || insightMap.revenue;
-  content.innerHTML = insights.map(ins => `
-        <div class="col-md-4">
-            <div class="ai-insight">
-                <i class="fas fa-lightbulb" style="color:var(--color-warning);margin-right:8px"></i>${ins}
-            </div>
-        </div>
-    `).join('');
-}
+// renderAI function removed as AI panel is no longer present
 
 function exportCSV() {
   const tbl = currentTabData?.table;
