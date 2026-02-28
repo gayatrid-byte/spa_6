@@ -1,4 +1,4 @@
-console.log("🔥 SSL CONFIG VERSION 2 LOADED");
+console.log("🚀🚀🚀 NEW VERSION WITH FS IMPORT 🚀🚀🚀");
 const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
