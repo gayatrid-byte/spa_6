@@ -1,3 +1,4 @@
+console.log("🔥 SSL CONFIG VERSION 2 LOADED");
 const mysql = require('mysql2/promise');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
