@@ -52,4 +52,4 @@ jobs:
           app-name: 'salon-app-gayatri'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_3031C1635DFB467896C44F289F65C175 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8473337CF5B9490EBBA7C0A38F781F40 }}
