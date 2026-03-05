@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-// Load environment from project root .env for consistency with database.js
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+// Load environment variables from backend/.env
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { pool, testConnection, initializeTables } = require('./config/database');
 const { errorHandler } = require('./middleware/error.middleware');
