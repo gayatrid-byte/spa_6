@@ -43,13 +43,18 @@ const {
   getMyLeaves
 } = require('../controllers/staff.controller');
 
-// ==================== STAFF MANAGEMENT ====================
-router.get('/', authenticate, getAllStaff);
-router.get('/dashboard', authenticate, getStaffDashboard);
-router.get('/:id', authenticate, getStaffById);
-router.post('/', authenticate, authorize('owner', 'center'), createStaff);
-router.put('/:id', authenticate, authorize('owner', 'center'), updateStaff);
-router.delete('/:id', authenticate, authorize('owner', 'center'), deleteStaff);
+// ==================== STAFF SELF-SERVICE ====================
+// NOTE: Specific routes MUST come before /:id to avoid shadowing
+router.get('/my/profile', authenticate, getMyProfile);
+router.get('/my/attendance', authenticate, getMyAttendance);
+router.get('/my/leaves', authenticate, getMyLeaves);
+
+// ==================== REPORTS ====================
+router.get('/reports/attendance/export', authenticate, exportAttendanceReport);
+router.get('/reports/attendance', authenticate, generateAttendanceReport);
+router.get('/reports/performance', authenticate, generatePerformanceReport);
+router.get('/reports/payroll', authenticate, generatePayrollReport);
+
 // ==================== ATTENDANCE ====================
 router.get('/attendance/all', authenticate, getAttendance);
 router.post('/attendance/record', authenticate, createAttendanceRecord);
@@ -69,16 +74,13 @@ router.get('/schedule/all', authenticate, getSchedule);
 router.post('/schedule', authenticate, authorize('owner', 'center'), createSchedule);
 router.put('/schedule/:id', authenticate, authorize('owner', 'center'), updateSchedule);
 
-// ==================== REPORTS ====================
-router.get('/reports/attendance', authenticate, generateAttendanceReport);
-router.get('/reports/attendance/export', authenticate, exportAttendanceReport);
-router.get('/reports/performance', authenticate, generatePerformanceReport);
-router.get('/reports/payroll', authenticate, generatePayrollReport);
-
-// ==================== STAFF SELF-SERVICE ====================
-router.get('/my/profile', authenticate, getMyProfile);
-router.get('/my/attendance', authenticate, getMyAttendance);
-router.get('/my/leaves', authenticate, getMyLeaves);
-
+// ==================== STAFF MANAGEMENT ====================
+// Generic /:id routes LAST so they don't shadow specific routes above
+router.get('/dashboard', authenticate, getStaffDashboard);
+router.get('/', authenticate, getAllStaff);
+router.get('/:id', authenticate, getStaffById);
+router.post('/', authenticate, authorize('owner', 'center'), createStaff);
+router.put('/:id', authenticate, authorize('owner', 'center'), updateStaff);
+router.delete('/:id', authenticate, authorize('owner', 'center'), deleteStaff);
 
 module.exports = router;

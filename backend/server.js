@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+
 // Load environment variables from backend/.env
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -21,15 +22,15 @@ const settingsRoutes = require('./routes/settings.routes');
 const membershipsRoutes = require('./routes/memberships.routes');
 const staffRoutes = require('./routes/staff.routes');
 const advancedBIRoutes = require('./routes/advanced-bi.routes');
-const app = express();
-const PORT = process.env.PORT || 3000;
 const calendarRoutes = require('./routes/calendar.routes');
 
-// Middleware
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ================= MIDDLEWARE =================
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/api/staff', staffRoutes);
 
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -37,23 +38,8 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// // API Routes
-// app.use('/api/auth', authRoutes);
-// app.use('/api/dashboard', dashboardRoutes);
-// app.use('/api/calendar', calendarRoutes);
-// app.use('/api/customers', customerRoutes);
-// app.use('/api/services', serviceRoutes);
-// app.use('/api/bookings', bookingRoutes);
-// app.use('/api/billing', billingRoutes);
-// app.use('/api/expenses', expenseRoutes);
-// app.use('/api/reports', reportRoutes);
-// app.use('/api/settings', settingsRoutes);
-// app.use('/api/memberships', membershipsRoutes);
-// app.use('/api/staff', staffRoutes);
-
 // ================= API ROUTES =================
-
-// Specific routes FIRST
+app.use('/api/auth', authRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/services', serviceRoutes);
@@ -64,15 +50,10 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/memberships', membershipsRoutes);
 app.use('/api/bi', advancedBIRoutes);
-
-// Generic routes LAST
 app.use('/api/customers', customerRoutes);
-// Auth can be anywhere
-app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-
-// Serve frontend
+// ================= FRONTEND ROUTES =================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/login.html'));
 });
@@ -81,10 +62,9 @@ app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/app.html'));
 });
 
-// Error handling
+// ================= ERROR HANDLING =================
 app.use(errorHandler);
 
-// Global error handling middleware
 app.use((err, req, res, next) => {
   console.error('[Global Error]', err.stack);
   res.status(err.status || 500).json({
@@ -99,10 +79,9 @@ app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Route not found' });
 });
 
-// Start server
+// ================= START SERVER =================
 async function startServer() {
   try {
-    // Test database connection
     const dbConnected = await testConnection();
     
     if (!dbConnected) {
@@ -110,10 +89,8 @@ async function startServer() {
       process.exit(1);
     }
     
-    // Initialize tables
     await initializeTables();
     
-    // Start listening
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV}`);
