@@ -65,7 +65,7 @@ router.delete('/categories/:id', adminOnly, deleteCategory);
 /* ================= ROOM ROUTES ================= */
 
 router.get('/rooms', getRooms);
-router.get('/rooms/suitable/:serviceId(\\d+)', getSuitableRooms);
+router.get('/rooms/suitable/:serviceId', getSuitableRooms);
 router.get('/rooms/:id', getRoomById);
 
 router.post('/rooms', adminOnly, createRoom);
@@ -93,7 +93,7 @@ router.delete('/offers/:id', adminOnly, deleteOffer);
 /* ================= SERVICE ROUTES ================= */
 
 router.get('/', getAllServices);
-router.get('/category/:categoryId(\\d+)', getServicesByCategory);
+router.get('/category/:categoryId', getServicesByCategory);
 router.get('/:id', getServiceById);
 
 router.post('/', adminOnly, createService);

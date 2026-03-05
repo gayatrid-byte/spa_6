@@ -10,11 +10,11 @@ const {
   getBookingById,
   createBooking,
   updateBooking,
-  cancelBooking,
+  updateBookingStatus,
   deleteBooking,
-  getBookingsByCustomer,
-  getBookingsByDate,
-  checkAvailability
+  checkAvailability,
+  getAvailableSlots,
+  searchCustomers
 } = require('../controllers/bookings.controller');
 
 /* ROLE ACCESS */
@@ -27,9 +27,9 @@ router.use(authenticate);
 
 /* GET */
 router.get('/', staffAccess, getAllBookings);
-router.get('/date/:date', staffAccess, getBookingsByDate);
-router.get('/customer/:customerId(\\d+)', staffAccess, getBookingsByCustomer);
 router.get('/availability', staffAccess, checkAvailability);
+router.get('/slots', staffAccess, getAvailableSlots);
+router.get('/customers/search', staffAccess, searchCustomers);
 router.get('/:id', staffAccess, getBookingById);
 
 /* CREATE */
@@ -38,8 +38,8 @@ router.post('/', staffAccess, createBooking);
 /* UPDATE */
 router.put('/:id', staffAccess, updateBooking);
 
-/* CANCEL */
-router.patch('/:id/cancel', staffAccess, cancelBooking);
+/* STATUS UPDATE (cancel, complete, etc.) */
+router.patch('/:id/status', staffAccess, updateBookingStatus);
 
 /* DELETE (Admin Only) */
 router.delete('/:id', authorize('owner', 'center'), deleteBooking);

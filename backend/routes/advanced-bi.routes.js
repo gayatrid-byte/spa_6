@@ -13,14 +13,8 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 
 /* CONTROLLERS */
-const {
-  getDashboardStats,
-  getRevenueReport,
-  getBookingsReport,
-  getServicePerformance,
-  getStaffPerformance,
-  getCustomerInsights
-} = require('../controllers/advanced-bi.controller');
+const AdvancedBIController = require('../controllers/advanced-bi.controller');
+
 
 /**
  * ROUTES STRUCTURE:
