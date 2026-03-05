@@ -24,7 +24,7 @@ const advancedBIRoutes = require('./routes/advanced-bi.routes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const calendarRoutes = require('./routes/calendar.routes');
-
+ssl: { rejectUnauthorized: false }
 // Middleware
 app.use(cors());
 app.use(express.json());
