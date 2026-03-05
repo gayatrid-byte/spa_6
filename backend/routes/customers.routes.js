@@ -25,7 +25,7 @@ router.use(authenticate);
 /* GET */
 router.get('/', staffAccess, getAllCustomers);
 router.get('/search', staffAccess, searchCustomers);
-router.get('/:id(\\d+)', staffAccess, getCustomerById);
+router.get('/:id', staffAccess, getCustomerById);
 
 /* CREATE */
 router.post('/', staffAccess, createCustomer);
