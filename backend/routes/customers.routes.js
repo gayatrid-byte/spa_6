@@ -31,10 +31,10 @@ router.get('/:id', staffAccess, getCustomerById);
 router.post('/', staffAccess, createCustomer);
 
 /* UPDATE */
-router.put('/:id)', staffAccess, updateCustomer);
+router.put('/:id', staffAccess, updateCustomer);
 
 /* DELETE */
-router.delete('/:id)', authorize('owner', 'center'), deleteCustomer);
+router.delete('/:id', authorize('owner', 'center'), deleteCustomer);
 
 /* EXPORT ROUTER */
 module.exports = router;
