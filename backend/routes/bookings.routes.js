@@ -30,19 +30,19 @@ router.get('/', staffAccess, getAllBookings);
 router.get('/date/:date', staffAccess, getBookingsByDate);
 router.get('/customer/:customerId(\\d+)', staffAccess, getBookingsByCustomer);
 router.get('/availability', staffAccess, checkAvailability);
-router.get('/:id(\\d+)', staffAccess, getBookingById);
+router.get('/:id', staffAccess, getBookingById);
 
 /* CREATE */
 router.post('/', staffAccess, createBooking);
 
 /* UPDATE */
-router.put('/:id(\\d+)', staffAccess, updateBooking);
+router.put('/:id', staffAccess, updateBooking);
 
 /* CANCEL */
-router.patch('/:id(\\d+)/cancel', staffAccess, cancelBooking);
+router.patch('/:id/cancel', staffAccess, cancelBooking);
 
 /* DELETE (Admin Only) */
-router.delete('/:id(\\d+)', authorize('owner', 'center'), deleteBooking);
+router.delete('/:id', authorize('owner', 'center'), deleteBooking);
 
 /* EXPORT ROUTER */
 module.exports = router;

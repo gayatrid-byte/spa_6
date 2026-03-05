@@ -59,46 +59,46 @@ router.get('/categories/sub', getSubCategories);
 router.get('/categories/tree', getCategoriesTree);
 
 router.post('/categories', adminOnly, createCategory);
-router.put('/categories/:id(\\d+)', adminOnly, updateCategory);
-router.delete('/categories/:id(\\d+)', adminOnly, deleteCategory);
+router.put('/categories/:id', adminOnly, updateCategory);
+router.delete('/categories/:id', adminOnly, deleteCategory);
 
 /* ================= ROOM ROUTES ================= */
 
 router.get('/rooms', getRooms);
 router.get('/rooms/suitable/:serviceId(\\d+)', getSuitableRooms);
-router.get('/rooms/:id(\\d+)', getRoomById);
+router.get('/rooms/:id', getRoomById);
 
 router.post('/rooms', adminOnly, createRoom);
-router.put('/rooms/:id(\\d+)', adminOnly, updateRoom);
-router.delete('/rooms/:id(\\d+)', adminOnly, deleteRoom);
+router.put('/rooms/:id', adminOnly, updateRoom);
+router.delete('/rooms/:id', adminOnly, deleteRoom);
 
 /* ================= COMBO ROUTES ================= */
 
 router.get('/combos', getAllCombos);
-router.get('/combos/:id(\\d+)', getComboById);
+router.get('/combos/:id', getComboById);
 
 router.post('/combos', adminOnly, createCombo);
-router.put('/combos/:id(\\d+)', adminOnly, updateCombo);
-router.delete('/combos/:id(\\d+)', adminOnly, deleteCombo);
+router.put('/combos/:id', adminOnly, updateCombo);
+router.delete('/combos/:id', adminOnly, deleteCombo);
 
 /* ================= OFFER ROUTES ================= */
 
 router.get('/offers', getAllOffers);
-router.get('/offers/:id(\\d+)', getOfferById);
+router.get('/offers/:id', getOfferById);
 
 router.post('/offers', adminOnly, createOffer);
-router.put('/offers/:id(\\d+)', adminOnly, updateOffer);
-router.delete('/offers/:id(\\d+)', adminOnly, deleteOffer);
+router.put('/offers/:id', adminOnly, updateOffer);
+router.delete('/offers/:id', adminOnly, deleteOffer);
 
 /* ================= SERVICE ROUTES ================= */
 
 router.get('/', getAllServices);
 router.get('/category/:categoryId(\\d+)', getServicesByCategory);
-router.get('/:id(\\d+)', getServiceById);
+router.get('/:id', getServiceById);
 
 router.post('/', adminOnly, createService);
-router.put('/:id(\\d+)', adminOnly, updateService);
-router.delete('/:id(\\d+)', adminOnly, deleteService);
+router.put('/:id', adminOnly, updateService);
+router.delete('/:id', adminOnly, deleteService);
 
 /* EXPORT ROUTER */
 module.exports = router;
