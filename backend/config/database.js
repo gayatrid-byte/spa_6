@@ -1,19 +1,25 @@
+console.log("🚀🚀🚀 digicertWITH FS IMPORT 🚀🚀🚀");
 const mysql = require('mysql2/promise');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
-
+const fs = require('fs');
+console.log("DB_USER:", process.env.DB_USER);
+console.log("DB_PASSWORD length:", process.env.DB_PASSWORD?.length);
 // Create connection pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
+  port: 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: {
+    ca: fs.readFileSync(
+      path.join(__dirname, 'DigiCertGlobalRootG2.crt.pem')
+    )
+  }
 });
-
 // Test connection
 async function testConnection() {
   try {
