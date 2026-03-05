@@ -7,6 +7,17 @@ const fs = require("fs");
 // we go exactly one level up.
 const envPath = path.join(__dirname, "..", ".env");
 
+const connection = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: {
+    rejectUnauthorized: true // This is usually required for Aiven!
+  }
+});
+
 console.log("🔍 Looking for .env at:", envPath);
 
 if (fs.existsSync(envPath)) {
