@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const customersController = require('../controllers/customers.controller'); // CORRECT
-const { authenticate } = require('../middleware/auth.middleware');
 
+/* MIDDLEWARE */
+const { authenticate, authorize } = require('../middleware/auth.middleware');
+
+/* CONTROLLERS */
 const {
   getAllCustomers,
   getCustomerById,
@@ -12,18 +14,27 @@ const {
   searchCustomers
 } = require('../controllers/customers.controller');
 
-router.get('/', authenticate, getAllCustomers);
-router.get('/search', authenticate, searchCustomers);
-router.get('/:id', authenticate, getCustomerById);
-router.post('/', authenticate, createCustomer);
-router.put('/:id', authenticate, updateCustomer);
-router.delete('/:id', authenticate, deleteCustomer);
+/* ROLE PROTECTION */
+const staffAccess = authorize('owner', 'center', 'staff');
 
-router.get('/', authenticate, customersController.getAllCustomers);
-router.get('/search', authenticate, customersController.searchCustomers);
-router.get('/:id', authenticate, customersController.getCustomerById);
-router.post('/', authenticate, customersController.createCustomer);
-router.put('/:id', authenticate, customersController.updateCustomer);
-router.delete('/:id', authenticate, customersController.deleteCustomer);
+/* GLOBAL AUTHENTICATION */
+router.use(authenticate);
 
+/* ================= CUSTOMER ROUTES ================= */
+
+/* GET */
+router.get('/', staffAccess, getAllCustomers);
+router.get('/search', staffAccess, searchCustomers);
+router.get('/:id(\\d+)', staffAccess, getCustomerById);
+
+/* CREATE */
+router.post('/', staffAccess, createCustomer);
+
+/* UPDATE */
+router.put('/:id(\\d+)', staffAccess, updateCustomer);
+
+/* DELETE */
+router.delete('/:id(\\d+)', authorize('owner', 'center'), deleteCustomer);
+
+/* EXPORT ROUTER */
 module.exports = router;

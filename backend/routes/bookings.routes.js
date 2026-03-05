@@ -1,31 +1,48 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth.middleware');
+
+/* MIDDLEWARE */
+const { authenticate, authorize } = require('../middleware/auth.middleware');
+
+/* CONTROLLERS */
 const {
-  searchCustomers,
   getAllBookings,
   getBookingById,
   createBooking,
   updateBooking,
-  updateBookingStatus,
+  cancelBooking,
   deleteBooking,
-  checkAvailability,
-  getAvailableSlots,
-  getDashboardStats
+  getBookingsByCustomer,
+  getBookingsByDate,
+  checkAvailability
 } = require('../controllers/bookings.controller');
 
-// Customer search
-router.get('/customers/search', authenticate, searchCustomers);
+/* ROLE ACCESS */
+const staffAccess = authorize('owner', 'center', 'staff');
 
-// Booking routes
-router.get('/', authenticate, getAllBookings);
-router.get('/stats', authenticate, getDashboardStats);
-router.get('/available-slots', authenticate, getAvailableSlots);
-router.get('/check-availability', authenticate, checkAvailability);
-router.get('/:id', authenticate, getBookingById);
-router.post('/', authenticate, createBooking);
-router.put('/:id', authenticate, updateBooking);
-router.patch('/:id/status', authenticate, updateBookingStatus);
-router.delete('/:id', authenticate, deleteBooking);
+/* GLOBAL AUTH */
+router.use(authenticate);
 
+/* ================= BOOKING ROUTES ================= */
+
+/* GET */
+router.get('/', staffAccess, getAllBookings);
+router.get('/date/:date', staffAccess, getBookingsByDate);
+router.get('/customer/:customerId(\\d+)', staffAccess, getBookingsByCustomer);
+router.get('/availability', staffAccess, checkAvailability);
+router.get('/:id(\\d+)', staffAccess, getBookingById);
+
+/* CREATE */
+router.post('/', staffAccess, createBooking);
+
+/* UPDATE */
+router.put('/:id(\\d+)', staffAccess, updateBooking);
+
+/* CANCEL */
+router.patch('/:id(\\d+)/cancel', staffAccess, cancelBooking);
+
+/* DELETE (Admin Only) */
+router.delete('/:id(\\d+)', authorize('owner', 'center'), deleteBooking);
+
+/* EXPORT ROUTER */
 module.exports = router;

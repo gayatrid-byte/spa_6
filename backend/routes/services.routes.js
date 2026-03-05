@@ -1,76 +1,104 @@
 const express = require('express');
 const router = express.Router();
-const servicesController = require('../controllers/services.controller');
-const { authenticate } = require('../middleware/auth.middleware');
-const { authorize } = require('../middleware/role.middleware');
 
-router.use(authenticate);
-// Import all controller functions
+/* MIDDLEWARE */
+const { authenticate, authorize } = require('../middleware/auth.middleware');
+
+/* CONTROLLERS */
 const {
-  getAllServices,
-  getServiceById,
-  createService,
-  updateService,
-  deleteService,
-  getServicesByCategory,
+  /* CATEGORY */
   getMainCategories,
   getSubCategories,
   getCategoriesTree,
   createCategory,
   updateCategory,
+  deleteCategory,
+
+  /* ROOM */
   getRooms,
+  getSuitableRooms,
   getRoomById,
   createRoom,
   updateRoom,
-  getSuitableRooms,
+  deleteRoom,
+
+  /* COMBO */
   getAllCombos,
   getComboById,
   createCombo,
   updateCombo,
   deleteCombo,
+
+  /* OFFER */
   getAllOffers,
   getOfferById,
   createOffer,
   updateOffer,
-  deleteOffer
+  deleteOffer,
+
+  /* SERVICES */
+  getAllServices,
+  getServicesByCategory,
+  getServiceById,
+  createService,
+  updateService,
+  deleteService
+
 } = require('../controllers/services.controller');
 
-// Basic service routes
-router.get('/', servicesController.getAllServices);
-router.get('/:id(\\d+)', servicesController.getServiceById);
-router.post('/', authorize('owner', 'center'), servicesController.createService);
-router.put('/:id(\\d+)', authorize('owner', 'center'), servicesController.updateService);
-router.delete('/:id(\\d+)', authorize('owner', 'center'), servicesController.deleteService);
-router.get('/category/:categoryId(\\d+)', servicesController.getServicesByCategory);
+/* ROLE PROTECTION */
+const adminOnly = authorize('owner', 'center');
 
-// Category management routes
-router.get('/categories/main', servicesController.getMainCategories);
-router.get('/categories/sub', servicesController.getSubCategories);
-router.get('/categories/tree', servicesController.getCategoriesTree);
-router.post('/categories', authorize('owner', 'center'), servicesController.createCategory);
-router.put('/categories/:id', authorize('owner', 'center'), servicesController.updateCategory);
-router.delete('/categories/:id', authorize('owner', 'center'), servicesController.deleteCategory);
+/* GLOBAL AUTH */
+router.use(authenticate);
 
-// Room management routes
-router.get('/rooms', servicesController.getRooms); // FIXED: Removed /all
-router.get('/rooms/:id(\\d+)', servicesController.getRoomById);
-router.post('/rooms', authorize('owner', 'center'), servicesController.createRoom);
-router.put('/rooms/:id(\\d+)', authorize('owner', 'center'), servicesController.updateRoom);
-router.delete('/rooms/:id(\\d+)', authorize('owner', 'center'), servicesController.deleteRoom);
-router.get('/rooms/suitable/:serviceId', servicesController.getSuitableRooms);
+/* ================= CATEGORY ROUTES ================= */
 
-// Combo/package routes
-router.get('/combos/all', servicesController.getAllCombos);
-router.get('/combos/:id', servicesController.getComboById);
-router.post('/combos', authorize('owner', 'center'), servicesController.createCombo);
-router.put('/combos/:id', authorize('owner', 'center'), servicesController.updateCombo);
-router.delete('/combos/:id', authorize('owner', 'center'), servicesController.deleteCombo);
+router.get('/categories/main', getMainCategories);
+router.get('/categories/sub', getSubCategories);
+router.get('/categories/tree', getCategoriesTree);
 
-// Offer routes
-router.get('/offers/all', servicesController.getAllOffers);
-router.get('/offers/:id', servicesController.getOfferById);
-router.post('/offers', authorize('owner', 'center'), servicesController.createOffer);
-router.put('/offers/:id', authorize('owner', 'center'), servicesController.updateOffer);
-router.delete('/offers/:id', authorize('owner', 'center'), servicesController.deleteOffer);
+router.post('/categories', adminOnly, createCategory);
+router.put('/categories/:id(\\d+)', adminOnly, updateCategory);
+router.delete('/categories/:id(\\d+)', adminOnly, deleteCategory);
 
+/* ================= ROOM ROUTES ================= */
+
+router.get('/rooms', getRooms);
+router.get('/rooms/suitable/:serviceId(\\d+)', getSuitableRooms);
+router.get('/rooms/:id(\\d+)', getRoomById);
+
+router.post('/rooms', adminOnly, createRoom);
+router.put('/rooms/:id(\\d+)', adminOnly, updateRoom);
+router.delete('/rooms/:id(\\d+)', adminOnly, deleteRoom);
+
+/* ================= COMBO ROUTES ================= */
+
+router.get('/combos', getAllCombos);
+router.get('/combos/:id(\\d+)', getComboById);
+
+router.post('/combos', adminOnly, createCombo);
+router.put('/combos/:id(\\d+)', adminOnly, updateCombo);
+router.delete('/combos/:id(\\d+)', adminOnly, deleteCombo);
+
+/* ================= OFFER ROUTES ================= */
+
+router.get('/offers', getAllOffers);
+router.get('/offers/:id(\\d+)', getOfferById);
+
+router.post('/offers', adminOnly, createOffer);
+router.put('/offers/:id(\\d+)', adminOnly, updateOffer);
+router.delete('/offers/:id(\\d+)', adminOnly, deleteOffer);
+
+/* ================= SERVICE ROUTES ================= */
+
+router.get('/', getAllServices);
+router.get('/category/:categoryId(\\d+)', getServicesByCategory);
+router.get('/:id(\\d+)', getServiceById);
+
+router.post('/', adminOnly, createService);
+router.put('/:id(\\d+)', adminOnly, updateService);
+router.delete('/:id(\\d+)', adminOnly, deleteService);
+
+/* EXPORT ROUTER */
 module.exports = router;
