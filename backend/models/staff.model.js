@@ -117,7 +117,7 @@ class Staff {
 
       // Total staff count
       const [totalStaff] = await pool.query(
-        'SELECT COUNT(*) as count FROM staff WHERE salon_id = ? AND status = "active"',
+        "SELECT COUNT(*) as count FROM staff WHERE salon_id = ? AND status = 'active' ",
         [salonId]
       );
 
@@ -125,9 +125,9 @@ class Staff {
       const [todayAttendance] = await pool.query(
         `SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN attendance_status = "present" THEN 1 ELSE 0 END) as present,
-        SUM(CASE WHEN attendance_status = "absent" THEN 1 ELSE 0 END) as absent,
-        SUM(CASE WHEN attendance_status = "late" THEN 1 ELSE 0 END) as late
+        SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END) as present,
+  SUM(CASE WHEN attendance_status = 'absent' THEN 1 ELSE 0 END) as absent,
+  SUM(CASE WHEN attendance_status = 'late' THEN 1 ELSE 0 END) as late
       FROM staff_attendance 
       WHERE attendance_date = ? AND staff_id IN (SELECT id FROM staff WHERE salon_id = ?)`,
         [today, salonId]
