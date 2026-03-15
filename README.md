@@ -12,7 +12,7 @@ A comprehensive salon management system built with Node.js, Express, MySQL, and 
 -   **Expense Tracking**: Record and categorize business expenses
 -   **Reports**: Generate revenue, appointments, and profit reports
 -   **User Management**: Role-based access control (Owner, Center Manager, Staff)
--   **Settings**: Configure salon information and preferences
+-   **Settings & Backup**: Configure salon information, manage users, and export data backups to CSV
 
 ## Tech Stack
 
@@ -273,6 +273,7 @@ salon-management-system/
 
 -   `GET /api/settings` - Get settings
 -   `PUT /api/settings` - Update settings
+-   `GET /api/settings/backup` - Export database to CSV
 -   `GET /api/settings/users` - Get all users
 -   `POST /api/settings/users` - Create user
 -   `PUT /api/settings/users/:id` - Update user
