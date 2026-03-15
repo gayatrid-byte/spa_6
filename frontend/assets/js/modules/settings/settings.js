@@ -115,6 +115,20 @@ export async function render(container) {
       </form>
     </div>
     
+    ${permissions.can(userRole, 'manageSettings') ? `
+      <div class="card mb-3">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h4>Data Backup</h4>
+            <p class="text-muted mb-0">Export all your salon data (customers, services, bookings, invoices, etc.) to CSV files for your records.</p>
+          </div>
+          <button id="createBackupBtn" class="btn btn-primary">
+            <i class="fas fa-download"></i> Create CSV Backup
+          </button>
+        </div>
+      </div>
+    ` : ''}
+
     ${permissions.can(userRole, 'manageUsers') ? `
       <div class="card">
         <div class="table-header">
@@ -303,6 +317,54 @@ function attachEventListeners(container, savedSettings) {
     });
   }
   
+  // Create Backup
+  const createBackupBtn = container.querySelector('#createBackupBtn');
+  if (createBackupBtn) {
+    createBackupBtn.addEventListener('click', async function() {
+      try {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        btn.disabled = true;
+
+        const data = await api.settings.exportBackup();
+        
+        const entities = ['users', 'staff', 'customers', 'services', 'bookings', 'invoices', 'expenses'];
+        let downloadCount = 0;
+
+        entities.forEach(entity => {
+          if (data[entity] && data[entity].length > 0) {
+            const csv = Papa.unparse(data[entity]);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `backup_${entity}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            downloadCount++;
+          }
+        });
+
+        if (downloadCount > 0) {
+          utils.showToast(`Successfully exported ${downloadCount} backup files`, 'success');
+        } else {
+          utils.showToast('No data available to backup', 'info');
+        }
+
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      } catch (error) {
+        console.error('Backup error:', error);
+        utils.showToast('Failed to create backup: ' + error.message, 'error');
+        this.innerHTML = '<i class="fas fa-download"></i> Create CSV Backup';
+        this.disabled = false;
+      }
+    });
+  }
+
   // Add user button
   const addUserBtn = container.querySelector('#addUserBtn');
   if (addUserBtn) {

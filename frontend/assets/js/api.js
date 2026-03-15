@@ -2224,6 +2224,10 @@ const api = {
       return api.request('/settings');
     },
 
+    exportBackup() {
+      return api.request('/settings/backup');
+    },
+
     update(data) {
       return api.request('/settings', {
         method: 'PUT',

@@ -248,6 +248,35 @@ async function deleteUser(req, res) {
   }
 }
 
+async function exportBackup(req, res) {
+  try {
+    const salonId = req.user.salon_id;
+    
+    const [usersRows] = await pool.query('SELECT * FROM users WHERE salon_id = ?', [salonId]);
+    const users = usersRows.map(u => { const { password, ...rest } = u; return rest; });
+    
+    const [staff] = await pool.query('SELECT * FROM staff WHERE salon_id = ?', [salonId]);
+    const [customers] = await pool.query('SELECT * FROM customers WHERE salon_id = ?', [salonId]);
+    const [services] = await pool.query('SELECT * FROM services WHERE salon_id = ?', [salonId]);
+    const [bookings] = await pool.query('SELECT * FROM bookings WHERE salon_id = ?', [salonId]);
+    const [invoices] = await pool.query('SELECT * FROM billing WHERE salon_id = ?', [salonId]);
+    const [expenses] = await pool.query('SELECT * FROM expenses WHERE salon_id = ?', [salonId]);
+    
+    res.json({
+      users,
+      staff,
+      customers,
+      services,
+      bookings,
+      invoices,
+      expenses
+    });
+  } catch (error) {
+    console.error('Backup generation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   getSettings,
   updateSettings,
@@ -255,6 +284,7 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  exportBackup,
   uploadLogo,
   upload // Export multer middleware for use in routes
 };
