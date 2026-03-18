@@ -901,7 +901,7 @@ export async function showBookingForm(booking = null) {
                 <label>Search Customer (Phone/Name)</label>
                 <div class="input-with-button">
                   <input type="text" id="customerSearch" placeholder="Enter phone or name...">
-                  <button type="button" class="btn btn-outline" onclick="searchCustomers()">
+                  <button type="button" class="btn btn-outline" style="margin-top: 15px;" onclick="searchCustomers()">
                     <i class="fas fa-search"></i>
                   </button>
                 </div>

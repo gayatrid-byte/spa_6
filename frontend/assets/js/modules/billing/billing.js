@@ -1394,9 +1394,11 @@ function renderInvoicesTable(invoiceList) {
             <td>${utils.formatCurrency(total, currency)}</td>
             <td><span class="badge badge-${getInvoiceStatusClass(inv.status)}">${inv.status}</span></td>
             <td>
-              <button class="btn btn-sm btn-outline" onclick="window.billingModule.viewInvoice(${inv.id})">View</button>
-              <button class="btn btn-sm btn-success" onclick="window.billingModule.printInvoice(${inv.id})">Print</button>
-              <button class="btn btn-sm btn-danger" onclick="window.billingModule.deleteInvoice(${inv.id})">Delete</button>
+              <div style="margin-bottom: 8px;">
+                <button class="btn btn-sm btn-outline" onclick="window.billingModule.viewInvoice(${inv.id})">View</button>
+                <button class="btn btn-sm btn-success" onclick="window.billingModule.printInvoice(${inv.id})">Print</button>
+                <button class="btn btn-sm btn-danger" onclick="window.billingModule.deleteInvoice(${inv.id})">Delete</button>
+              </div>
               <select class="btn btn-sm" onchange="window.billingModule.updateStatus(${inv.id}, this.value)">
                 <option value="">Status</option>
                 <option value="pending">Pending</option>
