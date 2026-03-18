@@ -259,7 +259,7 @@ async function exportBackup(req, res) {
     const [customers] = await pool.query('SELECT * FROM customers WHERE salon_id = ?', [salonId]);
     const [services] = await pool.query('SELECT * FROM services WHERE salon_id = ?', [salonId]);
     const [bookings] = await pool.query('SELECT * FROM bookings WHERE salon_id = ?', [salonId]);
-    const [invoices] = await pool.query('SELECT * FROM billing WHERE salon_id = ?', [salonId]);
+    const [invoices] = await pool.query('SELECT * FROM invoices WHERE salon_id = ?', [salonId]);
     const [expenses] = await pool.query('SELECT * FROM expenses WHERE salon_id = ?', [salonId]);
     
     res.json({
