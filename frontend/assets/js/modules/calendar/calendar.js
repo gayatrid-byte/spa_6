@@ -43,11 +43,11 @@ export async function render(container) {
               <option value="">All Room</option>
             </select>
 
-            <button id="addBookingBtn" class="btn btn-primary btn-sm">
+            <button id="addBookingBtn" class="btn btn-primary btn-sm" style="margin-top: 16px; margin-bottom: 16px;">
               ➕ Add New Booking
             </button>
 
-            <button id="addCustomerBtn" class="btn btn-secondary btn-sm">
+            <button id="addCustomerBtn" class="btn btn-secondary btn-sm" style="margin-top: 16px; margin-bottom: 16px;">
               👤 Add New Customer
             </button>
 

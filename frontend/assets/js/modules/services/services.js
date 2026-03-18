@@ -274,7 +274,7 @@ function renderServicesView() {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <button id="addServiceBtn" class="btn btn-primary">
+          <button id="addServiceBtn" class="btn btn-primary" style="padding-left: 48px !important; padding-right: 48px !important;">
             <i class="fas fa-plus"></i> Add Service
           </button>
         </div>

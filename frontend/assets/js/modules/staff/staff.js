@@ -114,7 +114,7 @@ function renderStaffDashboard(dashboardData, today) {
       <!-- Quick Actions -->
       <div class="card mt-3">
         <h4><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><path d="M8 21h8M12 17V7" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7 3h10l-1 6a4 4 0 01-8 0L7 3z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Quick Actions</h4>
-        <div class="d-flex gap-2 flex-wrap mt-2">
+        <div class="d-flex gap-2 flex-wrap mt-4" style="margin-top: 24px !important;">
           <button class="btn btn-primary" onclick="staffModule.takeAttendance()" title="Mark attendance for all staff">
             <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 6h8M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Take Today's Attendance
           </button>
@@ -130,11 +130,11 @@ function renderStaffDashboard(dashboardData, today) {
         </div>
       </div>
       <!-- Today's Staff Summary -->
-      <div class="card mt-3">
+      <div class="card mt-4" style="margin-top: 40px !important;">
         <h4><svg width="22" height="22" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 6h8M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Today's Staff Summary</h4>
         <div class="mt-2">
           <p><strong>Date: ${utils.formatDate(today)}</strong></p>
-          <div class="d-flex gap-3">
+          <div class="d-flex gap-3 mt-3" style="margin-top: 24px !important;">
             <span class="badge badge-success clickable" onclick="staffModule.viewTodayAttendance()" title="Click to view present staff">
               <svg width="18" height="18" viewBox="0 0 24 24" class="inline-icon" style="vertical-align:middle;display:inline-flex;transition:0.3s ease;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg> Present: ${todayAttendance.present || 0}
             </span>
@@ -146,7 +146,7 @@ function renderStaffDashboard(dashboardData, today) {
             </span>
           </div>
           
-          <div class="mt-3">
+          <div class="mt-4" style="margin-top: 32px !important;">
             <button class="btn btn-primary btn-sm" onclick="staffModule.takeAttendance()" title="Mark today's attendance">
               <i class="fas fa-clock"></i> Mark Today's Attendance
             </button>
