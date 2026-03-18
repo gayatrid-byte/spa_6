@@ -308,7 +308,7 @@ const BIDashboard = {
         break;
       case 'bookings':
         kpis = [
-          { label: 'Total Bookings', value: summary.total_bookings, unit: '', icon: 'fa-calendar' },
+          { label: 'Booked', value: summary.total_bookings, unit: '', icon: 'fa-calendar' },
           { label: 'Completed', value: summary.completed_bookings, unit: '', icon: 'fa-check-circle' },
           { label: 'Cancelled', value: summary.cancelled_bookings, unit: '', icon: 'fa-times-circle' },
           { label: 'Completion Rate', value: summary.completion_rate, unit: '%', icon: 'fa-percentage' },

@@ -530,7 +530,7 @@ export async function render(container) {
             <p id="cancelledBookings" class="stat-value">0</p>
           </div>
           <div class="stat-card">
-            <h3>Total Bookings</h3>
+            <h3>Booked</h3>
             <p id="totalBookings" class="stat-value">0</p>
           </div>
           <div class="stat-card">

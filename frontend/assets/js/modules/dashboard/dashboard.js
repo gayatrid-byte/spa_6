@@ -213,7 +213,7 @@ function renderKPIs(tab, data) {
     const tbl = Array.isArray(data.table) ? data.table : [];
     const completed = tbl.filter(r => r.status === 'completed').length;
     kpis = [
-      { label: 'Total Bookings', value: tbl.length },
+      { label: 'Booked', value: tbl.length },
       { label: 'Completed', value: completed },
       { label: 'Completion Rate', value: tbl.length ? ((completed / tbl.length) * 100).toFixed(1) + '%' : '0%' },
       { label: 'Total Value', value: '₹' + tbl.reduce((s, r) => s + n(r.amount), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 }) }

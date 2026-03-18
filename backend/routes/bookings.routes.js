@@ -14,7 +14,8 @@ const {
   deleteBooking,
   checkAvailability,
   getAvailableSlots,
-  searchCustomers
+  searchCustomers,
+  getDashboardStats
 } = require('../controllers/bookings.controller');
 
 /* ROLE ACCESS */
@@ -26,6 +27,7 @@ router.use(authenticate);
 /* ================= BOOKING ROUTES ================= */
 
 /* GET */
+router.get('/stats', staffAccess, getDashboardStats);
 router.get('/', staffAccess, getAllBookings);
 router.get('/availability', staffAccess, checkAvailability);
 router.get('/slots', staffAccess, getAvailableSlots);

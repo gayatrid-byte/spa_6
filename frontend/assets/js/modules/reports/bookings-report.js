@@ -45,7 +45,7 @@ export async function renderBookingsReport(container, filters = {}) {
   container.innerHTML = `
     <div class="bi-report-container">
       <div class="kpi-strip grid grid-cols-6 gap-3 mb-4">
-        <div class="kpi-card"><div class="kpi-label">Total Bookings</div><div class="kpi-value">${s.total_bookings}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Booked</div><div class="kpi-value">${s.total_bookings}</div></div>
         <div class="kpi-card"><div class="kpi-label">Completed</div><div class="kpi-value">${s.completed_bookings}</div></div>
         <div class="kpi-card"><div class="kpi-label">Cancelled</div><div class="kpi-value">${s.cancelled_bookings}</div></div>
         <div class="kpi-card"><div class="kpi-label">Avg Value</div><div class="kpi-value">-</div></div>

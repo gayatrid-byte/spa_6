@@ -180,7 +180,7 @@ function renderKPICards(data) {
 
     case 'bookings':
       kpis = [
-        { label: 'Total Bookings', value: summary.total_bookings, change: 0, unit: '' },
+        { label: 'Booked', value: summary.total_bookings, change: 0, unit: '' },
         { label: 'Completion Rate', value: summary.completion_rate_pct, change: 0, unit: '%' },
         { label: 'Avg Duration', value: summary.avg_duration_minutes, change: 0, unit: 'min' },
         { label: 'Booking Value', value: summary.avg_booking_value, change: 0, unit: '$' }
